@@ -1,0 +1,16 @@
+[
+{
+  "modid": "lootable",
+  "name": "DrCyano's Lootable Bodies",
+  "description": "Saves your items when you die in a container so that you can get your items back when you return.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "https://github.com/cyanobacterium/DrCyanos_Lootable-Bodies",
+  "updateUrl": "",
+  "authorList": ["Cyanobacterium"],
+  "credits": "The Forge and FML guys, for making the Forge modding API (you guys are awesome), plant-eating zombies, and the mod author Cyanobacterium (aka Synechocystis)",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
