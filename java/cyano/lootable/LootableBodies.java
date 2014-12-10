@@ -6,7 +6,6 @@ import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.item.Item;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.SidedProxy;
@@ -21,7 +20,7 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "0.1.0";
+    public static final String VERSION = "1.0.0";
 	
     public static boolean fancyCorpses = false;
     
@@ -54,8 +53,9 @@ public class LootableBodies {
     	EntityLootableBody.fallproof = config.getBoolean("corpse_fallproof", "options", true,
 				"If true, corpses will not be damaged by falling.");
     	EntityLootableBody.invulnerable = config.getBoolean("corpse_indestructible", "options", false,
-				"If true, corpses will be immune to all damage.");
-    	fancyCorpses = config.getBoolean("use_player_skin", "options", false,
+				"If true, corpses will be immune to all damage. You can \n"
+				+ "still destroy a corpse by hitting it with a shovel.");
+    	fancyCorpses = config.getBoolean("use_player_skin", "options", true,
 				"If true, corpses will have the skins of the player who \n"
 				+ "died. If false, then skeletons will be used instead.");
     	

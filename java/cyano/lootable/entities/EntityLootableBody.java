@@ -10,6 +10,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -38,32 +39,38 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	final static byte VACUUM_TIMELIMIT = 20;
 	final static int VACUUM_RADIUS = 3;
 	
-	final static int WATCHER_ID = 27; // data watcher used to exclude multiple people looting body at same time
+	final static int WATCHER_ID_BUSY = 27; // data watcher used to exclude multiple people looting body at same time
+	final static int WATCHER_ID_OWNER = 28;
+	
+	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
-
+	
+	// TODO: way to dispose an invincible body
 	protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
 	private byte vacuumTime = 0;
 	private GameProfile owner = null;
-	
+	private int shovelHits = 0;
+	private static final int shovelHitLimit = 3;
 	
 	public EntityLootableBody(World w) {
 		super(w);
 		this.isImmuneToFire = fireproof || invulnerable;
 		vacuumTime = 0;
-		this.getDataWatcher().addObject(WATCHER_ID, (byte)0);
+		this.getDataWatcher().addObject(WATCHER_ID_BUSY, (byte)0);
+		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
 	}
 	
 	public boolean isBusy(){
-		return this.getDataWatcher().getWatchableObjectByte(WATCHER_ID) != 0;
+		return this.getDataWatcher().getWatchableObjectByte(WATCHER_ID_BUSY) != 0;
 	}
 	
 	public void setBusy(boolean busy){
 		if(worldObj.isRemote) return;
 		// server-side only
 		if(busy){
-			this.getDataWatcher().updateObject(WATCHER_ID, (byte)1);
+			this.getDataWatcher().updateObject(WATCHER_ID_BUSY, (byte)1);
 		} else {
-			this.getDataWatcher().updateObject(WATCHER_ID, (byte)0);
+			this.getDataWatcher().updateObject(WATCHER_ID_BUSY, (byte)0);
 		}
 	}
 	
@@ -102,15 +109,33 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	public void setOwner(GameProfile gp){
 		owner = gp;
 		updatePlayerProfile();
+		if(gp.getName() != null){
+			this.getDataWatcher().updateObject(WATCHER_ID_OWNER, gp.getName());
+		} else {
+			this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
+		}
 	}
 	
 	public GameProfile getOwner(){
+		if(owner == null){
+			owner = getGameProfileFromName(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER));
+		} else if(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER).isEmpty()){
+			owner = null;
+		}
 		return owner;
 	}
 	
 	private void updatePlayerProfile() {
-        this.owner = net.minecraft.tileentity.TileEntitySkull.updateGameprofile(this.owner);
+        this.owner = net.minecraft.tileentity.TileEntitySkull.updateGameprofile(this.owner); // fills in the missing information
     }
+	
+	private GameProfile getGameProfileFromName(String name){
+		if(name == null || name.isEmpty()){
+			return null;
+		}
+		GameProfile gp = new GameProfile((UUID)null, name);
+		return net.minecraft.tileentity.TileEntitySkull.updateGameprofile(gp); // fills in the missing information
+	}
 	
 	@Override
     public void onEntityUpdate() {
@@ -128,8 +153,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         		for(int n = ae.size() - 1; n >= 0; n--){
         			Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
         			//if(e instanceof EntityItem){
-        				vacuumItem(((EntityItem)e).getEntityItem());
-        				this.worldObj.removeEntity(e);
+        				if(vacuumItem(((EntityItem)e).getEntityItem()))
+        					this.worldObj.removeEntity(e);
         			//}
         		}
         	}
@@ -178,15 +203,19 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         } else {
         	this.vacuumTime = VACUUM_TIMELIMIT;
         }
-        
-        if (root.hasKey("Owner", 10)) {
-            this.owner = NBTUtil.readGameProfileFromNBT(root.getCompoundTag("Owner"));
+        if (root.hasKey("Yaw")) {
+        	this.rotationYaw = root.getFloat("Yaw");
+        }
+        if (root.hasKey("Owner")) {
+        	this.setOwner(NBTUtil.readGameProfileFromNBT(root.getCompoundTag("Owner")));
+        }
+        if (root.hasKey("Name")) {
+        	this.setOwner(new GameProfile(null,root.getString("Name")));
         }
         else if (root.hasKey("ExtraType", 8)) {
             final String string = root.getString("ExtraType");
             if (!StringUtils.isNullOrEmpty(string)) {
-                this.owner = new GameProfile((UUID)null, string);
-                this.updatePlayerProfile();
+                this.setOwner(new GameProfile((UUID)null, string));
             }
         }
         this.setRotation(this.rotationYaw);
@@ -194,11 +223,39 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override protected void damageEntity(final DamageSource src, float amount) {
     //	System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
+    	// .kill was called, override invulnerability
+    	if(src == selfDestruct){
+    		super.damageEntity(src,amount);
+    		return;
+    	}
+    	// use shovel to dispose the body
+    	if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
+    		Item item = ((EntityPlayer)src.getEntity()).getHeldItem().getItem();
+    		if(item instanceof net.minecraft.item.ItemSpade){
+    			shovelHits++;
+    			super.damageEntity(src,amount);
+    			if(shovelHits >= shovelHitLimit){
+    				// bury the body
+    				this.kill();
+    			}
+    		}
+    	}
+    	if(this.posY < -1){
+    		// fell out of the world
+    		this.kill();
+    	}
+    	// special cases handled before this point
+    	// general cases:
     	if(invulnerable) return;
     	if(src.isFireDamage() && this.fireproof) return;
     	if(src.isExplosion() && this.blastproof) return;
     	if(src == DamageSource.fall && this.fallproof) return;
     	super.damageEntity(src, amount);
+    }
+    
+    @Override
+    protected void kill() {
+        this.attackEntityFrom(selfDestruct, this.getMaxHealth());
     }
     
     @Override
@@ -240,11 +297,18 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     public boolean vacuumItem(ItemStack item){
     	if(item == null) return true;
     	while(nextIndex < equipment.length && equipment[nextIndex] != null){
+    		if(item.isStackable() && ItemStack.areItemsEqual(equipment[nextIndex],item) 
+    				&& ItemStack.areItemStackTagsEqual(equipment[nextIndex],item)){
+    			int maxStackSize = Math.min(item.getMaxStackSize(),this.getInventoryStackLimit());
+    			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
+    				equipment[nextIndex].stackSize += item.stackSize;
+    				return true;
+    			}
+    		}
     		nextIndex++;
     	}
     	if(nextIndex == equipment.length) return false; // inventory is full
     	equipment[nextIndex] = applyItemDamage(item);
-System.out.println("Vacuumed up a "+item.getDisplayName());
     	return true;
     }
     
@@ -312,6 +376,10 @@ System.out.println("Vacuumed up a "+item.getDisplayName());
     
     @Override
     protected boolean interact(final EntityPlayer player) {
+//    	if(player.getHeldItem().getItem() instanceof ItemSpade && player.isSneaking()){
+//    		this.kill();
+//    		return true;
+//    	}
     	if(isBusy()) return false;
     	player.displayGUIChest(this);
         return true;

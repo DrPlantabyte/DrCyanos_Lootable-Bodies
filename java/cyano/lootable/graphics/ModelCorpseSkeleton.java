@@ -8,13 +8,13 @@ import net.minecraft.entity.*;
 import net.minecraft.util.MathHelper;
 
 @SideOnly(Side.CLIENT)
-public class ModelSkeleton extends ModelZombie
+public class ModelCorpseSkeleton extends ModelZombie
 {
-    public ModelSkeleton() {
+    public ModelCorpseSkeleton() {
         this(0.0f, false);
     }
     
-    public ModelSkeleton(final float f, final boolean b) {
+    public ModelCorpseSkeleton(final float f, final boolean b) {
         super(f, 0.0f, 64, 32);
         if (!b) {
             (this.bipedRightArm = new ModelRenderer(this, 40, 16)).addBox(-1.0f, -2.0f, -1.0f, 2, 12, 2, f);
@@ -45,11 +45,11 @@ public class ModelSkeleton extends ModelZombie
     	super.setRotationAngles(0, 0, f3, f4, f5, f6, e);
         this.bipedRightLeg.rotateAngleZ = 0.2f;
         this.bipedLeftLeg.rotateAngleZ = -0.2f;
-        this.bipedRightArm.rotateAngleZ = -0.3f;
+        this.bipedRightArm.rotateAngleZ = 0.3f;
         this.bipedLeftArm.rotateAngleZ = -0.3f;
-        this.bipedRightArm.rotateAngleY = 0.5f;
+        this.bipedRightArm.rotateAngleY = 1.25f;
         this.bipedLeftArm.rotateAngleY = -0.5f;
-        this.bipedRightArm.rotateAngleX = 3.14f;
+        this.bipedRightArm.rotateAngleX = 0f;
         this.bipedLeftArm.rotateAngleX = 0f;
     }
 }

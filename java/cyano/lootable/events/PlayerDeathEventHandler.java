@@ -19,14 +19,14 @@ public class PlayerDeathEventHandler {
 		if(event.entityLiving instanceof EntityPlayer){
 			
 		EntityPlayer player = (EntityPlayer)event.entityLiving;
-System.out.println("Player "+player.getName()+" died. Entity on "+(event.entity.worldObj.isRemote ? "client" : "server") + " world.");
+//System.out.println("Player "+player.getName()+" died. Entity on "+(event.entity.worldObj.isRemote ? "client" : "server") + " world.");
 		World w = event.entity.worldObj;
 		//if (!w.isRemote ){
 			
 			float rotation = player.getRotationYawHead();
 			EntityLootableBody corpse = new EntityLootableBody(w);
 			corpse.setPositionAndRotation(player.posX, player.posY, player.posZ,rotation,0);
-System.out.println("Creating corpse at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
+//System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
 			// set items
 			corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
 			for(int i = 0; i < 4; i++){
@@ -42,6 +42,8 @@ System.out.println("Creating corpse at ("+corpse.posX+","+corpse.posY+","+corpse
 			corpse.vacuumItem(new ItemStack(Items.bone,4));
 			
 			w.spawnEntityInWorld(corpse);
+			corpse.setOwner(player.getGameProfile());
+			corpse.setRotation(rotation);
 	 //   }
 		}
 	}

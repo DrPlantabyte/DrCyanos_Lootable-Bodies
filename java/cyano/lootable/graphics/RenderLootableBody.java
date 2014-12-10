@@ -1,7 +1,7 @@
 package cyano.lootable.graphics;
 
 import cyano.lootable.entities.EntityLootableBody;
-import cyano.lootable.graphics.ModelSkeleton;
+import cyano.lootable.graphics.ModelCorpseSkeleton;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.*;
 import net.minecraft.client.renderer.entity.layers.*;
@@ -9,19 +9,22 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
+@SideOnly(Side.CLIENT)
 public class RenderLootableBody extends RenderBiped{
 
     private static final ResourceLocation skeletonTexture = new ResourceLocation("textures/entity/skeleton/skeleton.png");
     
 	public RenderLootableBody(RenderManager rm) {
-		super(rm, new ModelSkeleton(), 0.5f);
+		super(rm, new ModelCorpseSkeleton(), 0.5f);
         this.addLayer(new LayerHeldItem(this));
         this.addLayer(new LayerBipedArmor((RendererLivingEntity)this) {
             @Override
             protected void func_177177_a() {
-                this.field_177189_c = new ModelSkeleton(0.5f, true); // model base (child version?)
-                this.field_177186_d = new ModelSkeleton(1.0f, true); // model base
+                this.field_177189_c = new ModelCorpseSkeleton(0.5f, true); // model base (child version?)
+                this.field_177186_d = new ModelCorpseSkeleton(1.0f, true); // model base
             }
         });
         
@@ -46,7 +49,6 @@ public class RenderLootableBody extends RenderBiped{
     }
     
     private ResourceLocation getTexture(final EntityLootableBody e) {
-    	// TODO: get skin of dead player
         return skeletonTexture;
     }
     
@@ -56,9 +58,6 @@ public class RenderLootableBody extends RenderBiped{
     }
     
     
-    @Override
-    protected /* bridge */ ResourceLocation getEntityTexture(final Entity e) {
-        return this.getTexture((EntityLootableBody)e);
-    }
+   
     
 }
