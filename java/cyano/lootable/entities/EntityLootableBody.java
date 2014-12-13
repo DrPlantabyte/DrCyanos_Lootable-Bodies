@@ -324,12 +324,11 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
     }
     
-    private int nextIndex = 5; // after the armor and held item slots
     public boolean vacuumItem(ItemStack item){
     	if(item == null) return true;
+    	int nextIndex = 5;
     	while(nextIndex < equipment.length && equipment[nextIndex] != null){
-    		if(item.isStackable() && ItemStack.areItemStacksEqual(equipment[nextIndex],item) 
-    				&& ItemStack.areItemStackTagsEqual(equipment[nextIndex],item)){
+    		if(canStack(equipment[nextIndex],item)){
     			int maxStackSize = Math.min(item.getMaxStackSize(),this.getInventoryStackLimit());
     			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
     				equipment[nextIndex].stackSize += item.stackSize;
@@ -341,6 +340,20 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(nextIndex == equipment.length) return false; // inventory is full
     	equipment[nextIndex] = applyItemDamage(item);
     	return true;
+    }
+    
+    private boolean canStack(ItemStack a, ItemStack b){
+    	if(a == null || b == null) return false;
+    	if(a.getItem() == b.getItem()){
+        	if(a.isStackable() == false )return false;
+    		if(a.stackSize + b.stackSize > Math.min(a.getMaxStackSize(),this.getInventoryStackLimit())) return false;
+    		if(a.hasTagCompound() == false && b.hasTagCompound() == false){
+    			return true;
+    		} else if(a.hasTagCompound() && b.hasTagCompound()){
+    			return ItemStack.areItemStackTagsEqual(a, b);
+    		}
+    	}
+    	return false;
     }
     
     public static ItemStack applyItemDamage(ItemStack itemstack){
