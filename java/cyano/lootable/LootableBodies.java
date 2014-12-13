@@ -20,7 +20,7 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.0.1";
+    public static final String VERSION = "1.1.2";
 	
     public static boolean fancyCorpses = false;
     
@@ -35,6 +35,8 @@ public class LootableBodies {
     	// load config
     	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
     	config.load();
+    	
+    	boolean invulnderable = true;
 		
     	EntityLootableBody.additionalItemDamage = config.getInt("item_damage_on_death", "options", 32, 0,1000,
 				"The amount of damage suffered by damageable items when you \n"
@@ -44,20 +46,39 @@ public class LootableBodies {
 				"The amount of damage a corpse can suffer before being \n"
 				+ "destroyed and releasing its items. \n"
 				+ "Note that 10 hearts = 20 HP.");
-    	EntityLootableBody.fireproof = config.getBoolean("corpse_fireproof", "options", true,
-				"If true, corpses will not be damaged by fire or lava.");
-    	EntityLootableBody.blastproof = config.getBoolean("corpse_blastproof", "options", true,
-				"If true, corpses will not be damaged by creepers or TNT. \n"
-				+ "If you make the corpse blast-proof, you will probably \n"
-				+ "want to also make is fall-proof");
-    	EntityLootableBody.fallproof = config.getBoolean("corpse_fallproof", "options", true,
-				"If true, corpses will not be damaged by falling.");
-    	EntityLootableBody.invulnerable = config.getBoolean("corpse_indestructible", "options", false,
-				"If true, corpses will be immune to all damage. You can \n"
-				+ "still destroy a corpse by hitting it with a shovel.");
     	fancyCorpses = config.getBoolean("use_player_skin", "options", true,
 				"If true, corpses will have the skins of the player who \n"
 				+ "died. If false, then skeletons will be used instead.");
+
+    	EntityLootableBody.hurtByAll = config.getBoolean("hurt_by_all", "corpse damage", false,
+				"If true, corpses will be damaged by anything that damages a player.");
+    	EntityLootableBody.hurtByFire = config.getBoolean("hurt_by_fire", "corpse damage", false,
+				"If true, corpses will be damaged by fire and lava.");
+    	EntityLootableBody.hurtByBlast = config.getBoolean("hurt_by_explosions", "corpse damage", false,
+				"If true, corpses will be damaged by creepers and TNT. \n"
+				+ "If you don't want bodies to be destroyed by explosions, \n"
+				+ "also disable fall damage.");
+    	EntityLootableBody.hurtByFall = config.getBoolean("hurt_by_fall", "corpse damage", false,
+				"If true, corpses will be damaged by falling long distances.");
+    	EntityLootableBody.hurtByCactus = config.getBoolean("hurt_by_cactus", "corpse damage", false,
+				"If true, corpses will be damaged by cacti.");
+    	EntityLootableBody.hurtByWeapons = config.getBoolean("hurt_by_weapons", "corpse damage", false,
+				"If true, corpses will be damaged by attacking it.");
+    	EntityLootableBody.hurtByBlockSuffocation = config.getBoolean("hurt_by_block_suffocation", "corpse damage", false,
+				"If true, corpses will be damaged by being stuck inside a block.");
+    	EntityLootableBody.hurtByOther = config.getBoolean("hurt_by_other", "corpse damage", false,
+				"If true, corpses will be damaged by damage sources not covered by the other options in this section.");
+    	
+    	
+    	EntityLootableBody.invulnerable = !or(
+    			EntityLootableBody.hurtByAll, 
+    			EntityLootableBody.hurtByBlast, 
+    			EntityLootableBody.hurtByBlockSuffocation, 
+    			EntityLootableBody.hurtByCactus, 
+    			EntityLootableBody.hurtByFall, 
+    			EntityLootableBody.hurtByFire, 
+    			EntityLootableBody.hurtByOther, 
+    			EntityLootableBody.hurtByWeapons);
     	
 	//	OreDictionary.initVanillaEntries()
 		config.save();
@@ -107,5 +128,17 @@ public class LootableBodies {
 	*/
 	
 	
-
+	private static boolean or(boolean... bools){
+		for(int i = 0; i < bools.length; i++){
+			if(bools[i] == true) return true;
+		}
+		return false;
+	}
+	
+	private static boolean and(boolean... bools){
+		for(int i = 0; i < bools.length; i++){
+			if(bools[i] == false) return false;
+		}
+		return true;
+	}
 }

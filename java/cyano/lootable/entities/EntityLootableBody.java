@@ -7,8 +7,12 @@ import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityCreature;
+import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
@@ -31,9 +35,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	public static final int INVENTORY_SIZE = 9*6;
 	public static int additionalItemDamage = 10;
 	public static float corpseHP = 40;
-	public static boolean fireproof = false;
-	public static boolean blastproof = false;
-	public static boolean fallproof = false;
+	public static boolean hurtByFire = false;
+	public static boolean hurtByBlast = false;
+	public static boolean hurtByFall = false;
+	public static boolean hurtByCactus = false;
+	public static boolean hurtByWeapons = false;
+	public static boolean hurtByBlockSuffocation = false;
+	public static boolean hurtByAll = false;
+	public static boolean hurtByOther = false;
 	public static boolean invulnerable = false;
 	
 	final static byte VACUUM_TIMELIMIT = 20;
@@ -54,7 +63,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	public EntityLootableBody(World w) {
 		super(w);
-		this.isImmuneToFire = fireproof || invulnerable;
+		this.isImmuneToFire = (!hurtByFire) || invulnerable;
 		vacuumTime = 0;
 		this.getDataWatcher().addObject(WATCHER_ID_BUSY, (byte)0);
 		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
@@ -247,10 +256,23 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	// special cases handled before this point
     	// general cases:
     	if(invulnerable) return;
-    	if(src.isFireDamage() && this.fireproof) return;
-    	if(src.isExplosion() && this.blastproof) return;
-    	if(src == DamageSource.fall && this.fallproof) return;
-    	super.damageEntity(src, amount);
+    	if(this.hurtByAll) super.damageEntity(src, amount);
+    	if(src.getEntity() != null && src.getEntity() instanceof EntityLivingBase && this.hurtByWeapons) super.damageEntity(src, amount);
+    	if(src.isFireDamage() && this.hurtByFire) super.damageEntity(src, amount);
+    	if(src.isExplosion() && this.hurtByBlast) super.damageEntity(src, amount);
+    	if(src == DamageSource.fall && this.hurtByFall) super.damageEntity(src, amount);
+    	if(src == DamageSource.cactus && this.hurtByCactus) super.damageEntity(src, amount);
+    	if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
+    	if(this.hurtByOther) super.damageEntity(src, amount);
+    	
+
+//    	public static boolean hurtByFire = false;
+//    	public static boolean hurtByBlast = false;
+//    	public static boolean hurtByFall = false;
+//    	public static boolean hurtByCactus = false;
+//    	public static boolean hurtByWeapons = false;
+//    	public static boolean hurtBySuffocation = false;
+//    	public static boolean hurtByOther = false;
     }
     
     @Override
@@ -297,12 +319,16 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(item == null) return true;
     	int nextIndex = 5; // after the armor and held item slots
     	while(nextIndex < equipment.length && equipment[nextIndex] != null){
-    		if(item.isStackable() && ItemStack.areItemsEqual(equipment[nextIndex],item) 
-    				&& ItemStack.areItemStackTagsEqual(equipment[nextIndex],item)){
-    			int maxStackSize = Math.min(item.getMaxStackSize(),this.getInventoryStackLimit());
+    		if(canStack(item,equipment[nextIndex])){
+    			int maxStackSize = Math.min(equipment[nextIndex].getMaxStackSize(),this.getInventoryStackLimit());
     			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
     				equipment[nextIndex].stackSize += item.stackSize;
     				return true;
+    			} else if(equipment[nextIndex].stackSize < maxStackSize){
+    				int difference = maxStackSize - equipment[nextIndex].stackSize;
+    				equipment[nextIndex].stackSize += difference;
+    				item.stackSize -= difference;
+    				vacuumItem(item);
     			}
     		}
     		nextIndex++;
@@ -318,6 +344,18 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             itemstack.setItemDamage(Math.min(newDamageValue, itemstack.getMaxDamage() - 1));
         }
     	return itemstack;
+    }
+    
+    
+    boolean canStack(ItemStack a, ItemStack b){
+    	if(ItemStack.areItemsEqual(a,b)){
+    		if(a.getItemDamage() == b.getItemDamage()){
+    			if(ItemStack.areItemStackTagsEqual(a,b)){
+    				return true;
+    			}
+    		}
+    	}
+    	return false;
     }
 	
     @Override
