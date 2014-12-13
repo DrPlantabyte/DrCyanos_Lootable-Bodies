@@ -1,13 +1,14 @@
 package cyano.lootable;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.RenderManager;
+import cpw.mods.fml.client.registry.RenderingRegistry;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cyano.lootable.entities.EntityLootableBody;
 import cyano.lootable.graphics.RenderLootableBody;
 import cyano.lootable.graphics.RenderSkinnedLootableBody;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.RenderingRegistry;
-import net.minecraftforge.fml.common.event.*;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.RenderManager;
 
 public class ClientProxy extends Proxy{
     @Override
@@ -20,13 +21,14 @@ public class ClientProxy extends Proxy{
     public void init(FMLInitializationEvent e) {
         super.init(e);
         // client-only init code
-        RenderManager rm = Minecraft.getMinecraft().getRenderManager();
+        RenderManager rm = RenderManager.instance;
         // add renderers
-        if(LootableBodies.fancyCorpses){
-        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderSkinnedLootableBody(rm));
-        }else {
+        // Fancy Corpses not supported in 1.7.10!
+//        if(LootableBodies.fancyCorpses){
+//        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderSkinnedLootableBody(rm));
+//        }else {
         	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderLootableBody(rm));
-        }
+//        }
     	
     }
 

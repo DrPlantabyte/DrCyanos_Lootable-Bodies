@@ -1,11 +1,11 @@
 package cyano.lootable.graphics;
 
-import net.minecraftforge.fml.relauncher.*;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.model.ModelZombie;
-import net.minecraft.entity.monster.*;
-import net.minecraft.entity.*;
-import net.minecraft.util.MathHelper;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
 public class ModelCorpseSkeleton extends ModelZombie
@@ -51,5 +51,8 @@ public class ModelCorpseSkeleton extends ModelZombie
         this.bipedLeftArm.rotateAngleY = -0.5f;
         this.bipedRightArm.rotateAngleX = 0f;
         this.bipedLeftArm.rotateAngleX = 0f;
+    	this.bipedHead.rotateAngleX = 0f;
+    	this.bipedHead.rotateAngleY = 0f;
+    	this.bipedHead.rotateAngleZ = 0f;
     }
 }

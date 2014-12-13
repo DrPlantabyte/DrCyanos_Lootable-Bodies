@@ -1,23 +1,17 @@
 package cyano.lootable.graphics;
 
 import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelPlayer;
-import net.minecraft.client.model.ModelZombie;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 @SideOnly(Side.CLIENT)
-public class ModelPlayerCorpse extends ModelPlayer{
+public class ModelPlayerCorpse extends net.minecraft.client.model.ModelBiped{
 
 	public ModelPlayerCorpse(){
-        super(0.0f, false);
+		super(0.0f, 0.0f, 64, 32);
     }
-	
-	public ModelPlayerCorpse(final float f, final boolean b) {
-        super(f, b);
-	}
 	
 
     @Override
@@ -39,10 +33,8 @@ public class ModelPlayerCorpse extends ModelPlayer{
     	this.bipedLeftArm.rotateAngleY = -0.5f;
     	this.bipedRightArm.rotateAngleX = 0f; 
     	this.bipedLeftArm.rotateAngleX = 0f;
-    	ModelBase.copyModelAngles(this.bipedLeftLeg, this.bipedLeftLegwear);
-        ModelBase.copyModelAngles(this.bipedRightLeg, this.bipedRightLegwear);
-        ModelBase.copyModelAngles(this.bipedLeftArm, this.bipedLeftArmwear);
-        ModelBase.copyModelAngles(this.bipedRightArm, this.bipedRightArmwear);
-        ModelBase.copyModelAngles(this.bipedBody, this.bipedBodyWear);
+    	this.bipedHead.rotateAngleX = 0f;
+    	this.bipedHead.rotateAngleY = 0f;
+    	this.bipedHead.rotateAngleZ = 0f;
     }
 }

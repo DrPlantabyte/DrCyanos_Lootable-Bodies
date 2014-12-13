@@ -1,14 +1,12 @@
 package cyano.lootable.events;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.player.PlayerDropsEvent;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.eventhandler.EventPriority;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cyano.lootable.entities.EntityLootableBody;
 
 public class PlayerDeathEventHandler {
@@ -63,6 +61,6 @@ public class PlayerDeathEventHandler {
 	}
 	
 	static boolean deepEquals(ItemStack a, ItemStack b){
-		return ItemStack.areItemsEqual(a, b) && ItemStack.areItemStacksEqual(a, b) && ItemStack.areItemStackTagsEqual(a, b);
+		return ItemStack.areItemStacksEqual(a, b) && ItemStack.areItemStacksEqual(a, b) && ItemStack.areItemStackTagsEqual(a, b);
 	}
 }

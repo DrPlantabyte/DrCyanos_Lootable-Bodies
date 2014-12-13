@@ -3,14 +3,12 @@ package cyano.lootable.entities;
 import java.util.List;
 import java.util.UUID;
 
-import com.google.common.collect.Iterables;
-import com.mojang.authlib.GameProfile;
-
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.SkinManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -19,12 +17,17 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.BlockPos;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StringUtils;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+
+import com.google.common.collect.Iterables;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
+
+import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 
 public class EntityLootableBody extends net.minecraft.entity.EntityLiving implements IInventory{
 
@@ -97,9 +100,15 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		this.prevRenderYawOffset = this.rotationYaw;
 		this.prevRotationYaw = this.rotationYaw;
 		this.newRotationYaw = this.rotationYaw;
-		this.setRotationYawHead(this.rotationYaw);
+		if(worldObj.isRemote){ // remote means client
+			this.setRotationYawHead(this.rotationYaw);
+		}
 	}
 	
+	@Override
+    protected void updateEntityActionState() {
+		// do nothing
+	}
 	
 	@Override
     protected boolean canDespawn() {
@@ -126,15 +135,29 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	}
 	
 	private void updatePlayerProfile() {
-        this.owner = net.minecraft.tileentity.TileEntitySkull.updateGameprofile(this.owner); // fills in the missing information
-    }
-	
+		if (this.owner == null || StringUtils.isNullOrEmpty(this.owner.getName())) {
+			return;
+		}
+		if (owner.isComplete() && owner.getProperties().containsKey((Object)"textures")) {
+			return;
+		}
+		GameProfile field_152110_j = MinecraftServer.getServer().func_152358_ax().func_152655_a(owner.getName());
+		if (field_152110_j == null) {
+			return;
+		}
+		if (Iterables.getFirst((Iterable)field_152110_j.getProperties().get("textures"), (Object)null) == null) {
+			field_152110_j = MinecraftServer.getServer().func_147130_as().fillProfileProperties(field_152110_j, true);
+		}
+		owner = field_152110_j;
+		
+	}
+
 	private GameProfile getGameProfileFromName(String name){
 		if(name == null || name.isEmpty()){
 			return null;
 		}
 		GameProfile gp = new GameProfile((UUID)null, name);
-		return net.minecraft.tileentity.TileEntitySkull.updateGameprofile(gp); // fills in the missing information
+		return gp; // may not be fully initialized
 	}
 	
 	@Override
@@ -149,7 +172,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         		double x2 = this.posX + VACUUM_RADIUS;
         		double y2 = this.posY + VACUUM_RADIUS;
         		double z2 = this.posZ + VACUUM_RADIUS;
-        		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(x1,y1,z1,x2,y2,z2));
+        		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, AxisAlignedBB.getBoundingBox(x1,y1,z1,x2,y2,z2));
         		for(int n = ae.size() - 1; n >= 0; n--){
         			Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
         			//if(e instanceof EntityItem){
@@ -181,7 +204,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         if(vacuumTime < VACUUM_TIMELIMIT)root.setByte("Vac", vacuumTime);
         if(owner != null){
         	final NBTTagCompound nbtTagCompound = new NBTTagCompound();
-            NBTUtil.writeGameProfile(nbtTagCompound, owner);
+            NBTUtil.func_152460_a(nbtTagCompound, owner);
             root.setTag("Owner", nbtTagCompound);
         }
     }
@@ -207,7 +230,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         	this.rotationYaw = root.getFloat("Yaw");
         }
         if (root.hasKey("Owner")) {
-        	this.setOwner(NBTUtil.readGameProfileFromNBT(root.getCompoundTag("Owner")));
+        	this.setOwner(NBTUtil.func_152459_a(root.getCompoundTag("Owner")));
         }
         if (root.hasKey("Name")) {
         	this.setOwner(new GameProfile(null,root.getString("Name")));
@@ -258,6 +281,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         this.attackEntityFrom(selfDestruct, this.getMaxHealth());
     }
     
+    
+    @Override public void updateAITasks(){
+    	// do nothing
+    }
     @Override
     public ItemStack getHeldItem() {
         return this.equipment[0];
@@ -268,9 +295,13 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         return this.equipment[slot % equipment.length];
     }
     
-    @Override
+    @Deprecated // 1.7.10 does not provide parent for this method.
     public ItemStack getCurrentArmor(final int armorSlot) {
         return getEquipmentInSlot(armorSlot + 1);
+    }
+    
+    public ItemStack armorItemInSlot(int i){
+    	return getCurrentArmor(i);
     }
     
     @Override
@@ -278,7 +309,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         this.equipment[slot] = item;
     }
     
-    @Override
+    @Deprecated // 1.7.10 does not provide parent for this method.
     public ItemStack[] getInventory() {
         return this.equipment;
     }
@@ -297,7 +328,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     public boolean vacuumItem(ItemStack item){
     	if(item == null) return true;
     	while(nextIndex < equipment.length && equipment[nextIndex] != null){
-    		if(item.isStackable() && ItemStack.areItemsEqual(equipment[nextIndex],item) 
+    		if(item.isStackable() && ItemStack.areItemStacksEqual(equipment[nextIndex],item) 
     				&& ItemStack.areItemStackTagsEqual(equipment[nextIndex],item)){
     			int maxStackSize = Math.min(item.getMaxStackSize(),this.getInventoryStackLimit());
     			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
@@ -412,7 +443,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 
 	@Override
-	public void closeInventory(EntityPlayer player) {
+	public void closeInventory() {
 		setBusy(false);
 		playSound("mob.horse.leather");
 	}
@@ -437,17 +468,6 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         return splitStack;
 	}
 
-
-	@Override
-	public int getField(int id) {
-		return 0;
-	}
-
-
-	@Override
-	public int getFieldCount() {
-		return 0;
-	}
 
 
 	@Override
@@ -506,17 +526,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 
 	@Override
-	public void openInventory(EntityPlayer player) {
+	public void openInventory() {
 		setBusy(true);
 		playSound("mob.horse.armor");
 	}
 
 
-	@Override
-	public void setField(int id, int value) {
-		// do nothing
-		
-	}
 
 
 	@Override
@@ -527,7 +542,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
         this.markDirty();
     }
-    
+
+
+	@Override public String getInventoryName(){
+		return this.getClass().getSimpleName();
+	}
+	@Override public boolean hasCustomInventoryName(){
+		return false;
+	}
 ///// END OF INVENTORY METHODS /////
    
     
