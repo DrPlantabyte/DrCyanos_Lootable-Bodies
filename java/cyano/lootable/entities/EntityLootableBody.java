@@ -293,9 +293,9 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
     }
     
-    private int nextIndex = 5; // after the armor and held item slots
     public boolean vacuumItem(ItemStack item){
     	if(item == null) return true;
+    	int nextIndex = 5; // after the armor and held item slots
     	while(nextIndex < equipment.length && equipment[nextIndex] != null){
     		if(item.isStackable() && ItemStack.areItemsEqual(equipment[nextIndex],item) 
     				&& ItemStack.areItemStackTagsEqual(equipment[nextIndex],item)){
