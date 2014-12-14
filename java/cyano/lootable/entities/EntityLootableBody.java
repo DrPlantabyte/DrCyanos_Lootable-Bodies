@@ -6,6 +6,7 @@ import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
@@ -34,9 +35,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	public static final int INVENTORY_SIZE = 9*6;
 	public static int additionalItemDamage = 10;
 	public static float corpseHP = 40;
-	public static boolean fireproof = false;
-	public static boolean blastproof = false;
-	public static boolean fallproof = false;
+	public static boolean hurtByFire = false;
+	public static boolean hurtByBlast = false;
+	public static boolean hurtByFall = false;
+	public static boolean hurtByCactus = false;
+	public static boolean hurtByWeapons = false;
+	public static boolean hurtByBlockSuffocation = false;
+	public static boolean hurtByAll = false;
+	public static boolean hurtByOther = false;
 	public static boolean invulnerable = false;
 	
 	final static byte VACUUM_TIMELIMIT = 20;
@@ -57,7 +63,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	public EntityLootableBody(World w) {
 		super(w);
-		this.isImmuneToFire = fireproof || invulnerable;
+		this.isImmuneToFire = (!hurtByFire) || invulnerable;
 		vacuumTime = 0;
 		this.getDataWatcher().addObject(WATCHER_ID_BUSY, (byte)0);
 		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
@@ -270,10 +276,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	// special cases handled before this point
     	// general cases:
     	if(invulnerable) return;
-    	if(src.isFireDamage() && this.fireproof) return;
-    	if(src.isExplosion() && this.blastproof) return;
-    	if(src == DamageSource.fall && this.fallproof) return;
-    	super.damageEntity(src, amount);
+    	if(this.hurtByAll) super.damageEntity(src, amount);
+    	if(src.getEntity() != null && src.getEntity() instanceof EntityLivingBase && this.hurtByWeapons) super.damageEntity(src, amount);
+    	if(src.isFireDamage() && this.hurtByFire) super.damageEntity(src, amount);
+    	if(src.isExplosion() && this.hurtByBlast) super.damageEntity(src, amount);
+    	if(src == DamageSource.fall && this.hurtByFall) super.damageEntity(src, amount);
+    	if(src == DamageSource.cactus && this.hurtByCactus) super.damageEntity(src, amount);
+    	if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
+    	if(this.hurtByOther) super.damageEntity(src, amount);
     }
     
     @Override
