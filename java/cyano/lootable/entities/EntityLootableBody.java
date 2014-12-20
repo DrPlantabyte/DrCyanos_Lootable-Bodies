@@ -355,6 +355,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     private boolean canStack(ItemStack a, ItemStack b){
     	if(a == null || b == null) return false;
     	if(a.getItem() == b.getItem()){
+    		if(a.getItemDamage() != b.getItemDamage()) return false;
         	if(a.isStackable() == false )return false;
     		if(a.stackSize + b.stackSize > Math.min(a.getMaxStackSize(),this.getInventoryStackLimit())) return false;
     		if(a.hasTagCompound() == false && b.hasTagCompound() == false){
