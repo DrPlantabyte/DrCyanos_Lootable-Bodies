@@ -260,7 +260,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	// use shovel to dispose the body
     	if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
     		Item item = ((EntityPlayer)src.getEntity()).getHeldItem().getItem();
-    		if(item instanceof net.minecraft.item.ItemSpade){
+    		if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(new ItemStack(item), "shovel") != -1){
     			shovelHits++;
     			super.damageEntity(src,amount);
     			if(shovelHits >= shovelHitLimit){
