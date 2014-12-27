@@ -1,11 +1,13 @@
 package cyano.lootable.entities;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
 import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
 
+import cyano.lootable.LootableBodies;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLiving;
@@ -54,8 +56,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
 	
-	// TODO: way to dispose an invincible body
 	protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
+	protected final java.util.Deque<ItemStack> auxInventory = new java.util.LinkedList<ItemStack>();
 	private byte vacuumTime = 0;
 	private GameProfile owner = null;
 	private int shovelHits = 0;
@@ -151,7 +153,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         super.onEntityUpdate();
         if(vacuumTime < VACUUM_TIMELIMIT){
         	// vacuum up loose items (which may be dropped by other mods that give expanded inventories)
-        	if(!this.worldObj.isRemote){
+        	if(!this.worldObj.isRemote  && this.notFull()){
         		double x1 = this.posX - VACUUM_RADIUS;
         		double y1 = this.posY - VACUUM_RADIUS;
         		double z1 = this.posZ - VACUUM_RADIUS;
@@ -159,19 +161,48 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         		double y2 = this.posY + VACUUM_RADIUS;
         		double z2 = this.posZ + VACUUM_RADIUS;
         		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(x1,y1,z1,x2,y2,z2));
-        		for(int n = ae.size() - 1; n >= 0; n--){
-        			Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
-        			//if(e instanceof EntityItem){
-        				if(vacuumItem(((EntityItem)e).getEntityItem()))
-        					this.worldObj.removeEntity(e);
-        			//}
+        		if(!ae.isEmpty()){
+        			for(int n = ae.size() - 1; n >= 0; n--){
+        				Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
+        				ItemStack leftover = vacuumItem(((EntityItem)e).getEntityItem());
+        				this.worldObj.removeEntity(e);
+        				if(leftover != null){
+        					this.entityDropItem(leftover, 0.0f);
+        				}
+        			}
         		}
         	}
         	vacuumTime++;
         }
-        
+        shiftInventory();
     }
     
+	/**
+	 * condenses inventory when there's an overflow buffer
+	 */
+	private void shiftInventory(){
+		if(!auxInventory.isEmpty()){
+			if(equipment[equipment.length - 1] == null){
+				// pull item from overflow buffer
+				equipment[equipment.length - 1] = auxInventory.pop();
+			}
+			for(int dstSlot = 5; dstSlot < equipment.length; dstSlot++){
+				if(equipment[dstSlot] == null){
+					// shift next item to here
+					int srcSlot = dstSlot+1;
+					while( srcSlot < equipment.length && equipment[srcSlot] == null){
+						srcSlot++;
+					}
+					if(srcSlot == equipment.length){
+						// inventory already condensed
+						return;
+					}
+					equipment[dstSlot] = equipment[srcSlot];
+					equipment[srcSlot] = null;
+				}
+			}
+		}
+	}
     
 
 
@@ -187,6 +218,18 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             nbttaglist.appendTag(nbttagcompound1);
         }
         root.setTag("Equipment", nbttaglist);
+        if(!this.auxInventory.isEmpty()){
+        	final NBTTagList nbtauxtaglist = new NBTTagList();
+        	Iterator<ItemStack> iter = this.auxInventory.iterator();
+        	while (iter.hasNext()) {
+        		ItemStack i = iter.next();
+        		if(i == null) continue;
+                final NBTTagCompound nbttagcompound1 = new NBTTagCompound();
+                i.writeToNBT(nbttagcompound1);
+                nbtauxtaglist.appendTag(nbttagcompound1);
+            }
+            root.setTag("Aux", nbtauxtaglist);
+        }
         if(vacuumTime < VACUUM_TIMELIMIT)root.setByte("Vac", vacuumTime);
         if(owner != null){
         	final NBTTagCompound nbtTagCompound = new NBTTagCompound();
@@ -205,6 +248,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             }
         }
     	root.removeTag("Equipment");
+    	if(root.hasKey("Aux")){
+    		final NBTTagList nbttaglist = root.getTagList("Aux", 10);
+    		for (int i = 0; i < equipment.length && i < nbttaglist.tagCount(); ++i) {
+                this.auxInventory.addLast(ItemStack.loadItemStackFromNBT(nbttaglist.getCompoundTagAt(i)));
+            }
+    	}
         super.readEntityFromNBT(root);
         // now read the rest of the tag
         if(root.hasKey("Vac")){
@@ -231,7 +280,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
     
     @Override protected void damageEntity(final DamageSource src, float amount) {
-    //	System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
+    //	//System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
     	// .kill was called, override invulnerability
     	if(src == selfDestruct){
     		super.damageEntity(src,amount);
@@ -239,8 +288,9 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	}
     	// use shovel to dispose the body
     	if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
-    		Item item = ((EntityPlayer)src.getEntity()).getHeldItem().getItem();
-    		if(item instanceof net.minecraft.item.ItemSpade){
+    		ItemStack itemStack = ((EntityPlayer)src.getEntity()).getHeldItem(); 
+    		Item item = itemStack.getItem();
+    		if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(itemStack, "shovel") >= 0){
     			shovelHits++;
     			super.damageEntity(src,amount);
     			if(shovelHits >= shovelHitLimit){
@@ -266,13 +316,6 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(this.hurtByOther) super.damageEntity(src, amount);
     	
 
-//    	public static boolean hurtByFire = false;
-//    	public static boolean hurtByBlast = false;
-//    	public static boolean hurtByFall = false;
-//    	public static boolean hurtByCactus = false;
-//    	public static boolean hurtByWeapons = false;
-//    	public static boolean hurtBySuffocation = false;
-//    	public static boolean hurtByOther = false;
     }
     
     @Override
@@ -307,35 +350,107 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     protected void dropEquipment(final boolean doDrop, final int dropProbability) {
-        for (int j = 0; j < this.getInventory().length; ++j) {
-            final ItemStack itemstack = this.getEquipmentInSlot(j);
-            if (itemstack != null && doDrop  ) {
+        if(!doDrop) return;
+    	for (int j = 0; j < this.equipment.length; ++j) {
+            final ItemStack itemstack = equipment[j];
+            if (itemstack != null ) {
                 this.entityDropItem(itemstack, 0.0f);
             }
         }
+    	if(this.auxInventory.size() > 0){
+	    	Iterator<ItemStack> buffer = this.auxInventory.iterator();
+			while(buffer.hasNext()){
+				ItemStack itemstack = buffer.next();
+				if(itemstack == null) continue;
+				this.entityDropItem(itemstack, 0.0f);
+			}
+    	}
     }
     
-    public boolean vacuumItem(ItemStack item){
-    	if(item == null) return true;
-    	int nextIndex = 5; // after the armor and held item slots
-    	while(nextIndex < equipment.length && equipment[nextIndex] != null){
-    		if(canStack(item,equipment[nextIndex])){
-    			int maxStackSize = Math.min(equipment[nextIndex].getMaxStackSize(),this.getInventoryStackLimit());
-    			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
-    				equipment[nextIndex].stackSize += item.stackSize;
-    				return true;
-    			} else if(equipment[nextIndex].stackSize < maxStackSize){
-    				int difference = maxStackSize - equipment[nextIndex].stackSize;
-    				equipment[nextIndex].stackSize += difference;
-    				item.stackSize -= difference;
-    				vacuumItem(item);
-    			}
+    boolean notFull(){
+    	for(int i = 5; i < equipment.length; i++){
+    		if(equipment[i] == null){
+    			return true;
     		}
-    		nextIndex++;
     	}
-    	if(nextIndex == equipment.length) return false; // inventory is full
-    	equipment[nextIndex] = applyItemDamage(item);
-    	return true;
+    	return auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize;
+    }
+    /**
+     * 
+     * @param item
+     * @return Returns null if the item was taken up, returns an ItemStack if 
+     * the item was not taken up (means that it was partially stacked and the 
+     * remainder was returned) 
+     */
+    public ItemStack vacuumItem(ItemStack item){
+    	if(item == null) return null;
+    	int nextIndex = 5; // after the armor and held item slots
+    	while(nextIndex < equipment.length){
+    		if(equipment[nextIndex] != null){
+	    		if(canStack(item,equipment[nextIndex])){
+	    			ItemStack remainder = stackItemStacks(equipment[nextIndex],item);
+	    			if(remainder != null){
+	    	    		item = remainder;
+	    			} else {
+	    				return null;
+	    			}
+	    		}
+    		} else {
+    			equipment[nextIndex] = applyItemDamage(item);
+    			return null;
+    		}
+			nextIndex++;
+    	}
+		// inventory is full
+		if(auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize){
+			// put item in the overflow
+			Iterator<ItemStack> buffer = this.auxInventory.iterator();
+			while(buffer.hasNext()){
+				ItemStack bufferItem = buffer.next();
+				if(canStack(bufferItem,item)){
+					item = stackItemStacks(bufferItem,item);
+					if(item == null){
+						return null;
+					}
+				}
+			}
+//System.out.println("Adding "+item.toString()+" to the buffer.");
+			this.auxInventory.addLast(applyItemDamage(item));
+			return null;
+		} else {
+			// and the overflow buffer is full too
+    		return item.copy();
+		} 
+    	
+    }
+    /**
+     * Stacks two ItemStacks, returning the remainder.
+     * @param dest ItemStack to stack into
+     * @param src ItemStack we want to add
+     * @return Returns the leftover items as an ItemStack (returns null if both 
+     * stacks can merge into a single stack) 
+     */
+    ItemStack stackItemStacks(ItemStack dest, ItemStack src){
+    	if(src.stackSize == 0) return null;
+//System.out.println("Stacking "+src.toString()+" into "+dest.toString());
+    	if(canStack(dest,src)){
+    		int maxStackSize = Math.min(dest.getMaxStackSize(),this.getInventoryStackLimit());
+			if(src.stackSize + dest.stackSize < maxStackSize){
+				dest.stackSize += src.stackSize;
+				return null;
+			} else if(dest.stackSize < maxStackSize){
+				int difference = maxStackSize - dest.stackSize;
+				dest.stackSize += difference;
+				src.stackSize -= difference;
+				if(src.stackSize == 0) return null;
+				return src;
+			} else {
+				return src;
+			}
+    	} else {
+    		// cannot stack
+    		return src;
+    	}
     }
     
     public static ItemStack applyItemDamage(ItemStack itemstack){
@@ -348,7 +463,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     
     boolean canStack(ItemStack a, ItemStack b){
-    	if(ItemStack.areItemsEqual(a,b)){
+    	if(ItemStack.areItemsEqual(a,b) && a.isStackable()){
     		if(a.getItemDamage() == b.getItemDamage()){
     			if(ItemStack.areItemStackTagsEqual(a,b)){
     				return true;
@@ -436,6 +551,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     		worldObj.playSoundAtEntity(this, soundID, 0.5F, 0.4F );
     	}
     }
+    
+    @Override public boolean canBreatheUnderwater() {
+        return true;
+    }
 
 ///// INVENTORY METHODS /////
 	//@Override // gradle thinks this method is called clearInventory(), eclipse thinks it is called clear()
@@ -443,6 +562,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		for (int i = 0; i < this.equipment.length; ++i) {
             this.equipment[i] = null;
         }
+		auxInventory.clear();
 	}
 	public void clearInventory(){
 		clear();

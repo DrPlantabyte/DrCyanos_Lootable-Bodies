@@ -20,9 +20,10 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.1.2";
+    public static final String VERSION = "1.2.0";
 	
     public static boolean fancyCorpses = false;
+    public static int corpseAuxilleryInventorySize = 54;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
@@ -49,6 +50,14 @@ public class LootableBodies {
     	fancyCorpses = config.getBoolean("use_player_skin", "options", true,
 				"If true, corpses will have the skins of the player who \n"
 				+ "died. If false, then skeletons will be used instead.");
+    	
+    	corpseAuxilleryInventorySize = Math.max(
+    			config.getInt("corpse_inventory_size", "options", 
+    					corpseAuxilleryInventorySize + EntityLootableBody.INVENTORY_SIZE, 
+    					EntityLootableBody.INVENTORY_SIZE,Short.MAX_VALUE/2,
+    					"The maximum number of items that can be stored in a \n"
+    					+ "corpse. Note that only 54 can be seen at a time")
+    			- EntityLootableBody.INVENTORY_SIZE,0);
 
     	EntityLootableBody.hurtByAll = config.getBoolean("hurt_by_all", "corpse damage", false,
 				"If true, corpses will be damaged by anything that damages a player.");
