@@ -1,10 +1,9 @@
 package cyano.lootable.entities;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.SkinManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -19,16 +18,15 @@ import net.minecraft.nbt.NBTUtil;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
-import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.StringUtils;
 import net.minecraft.world.World;
 
 import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import cyano.lootable.LootableBodies;
 
 public class EntityLootableBody extends net.minecraft.entity.EntityLiving implements IInventory{
 
@@ -56,6 +54,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	// TODO: way to dispose an invincible body
 	protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
+	protected final java.util.Deque<ItemStack> auxInventory = new java.util.LinkedList<ItemStack>();
 	private byte vacuumTime = 0;
 	private GameProfile owner = null;
 	private int shovelHits = 0;
@@ -171,7 +170,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         super.onEntityUpdate();
         if(vacuumTime < VACUUM_TIMELIMIT){
         	// vacuum up loose items (which may be dropped by other mods that give expanded inventories)
-        	if(!this.worldObj.isRemote){
+        	if(!this.worldObj.isRemote && this.notFull()){
         		double x1 = this.posX - VACUUM_RADIUS;
         		double y1 = this.posY - VACUUM_RADIUS;
         		double z1 = this.posZ - VACUUM_RADIUS;
@@ -179,21 +178,49 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         		double y2 = this.posY + VACUUM_RADIUS;
         		double z2 = this.posZ + VACUUM_RADIUS;
         		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, AxisAlignedBB.getBoundingBox(x1,y1,z1,x2,y2,z2));
-        		for(int n = ae.size() - 1; n >= 0; n--){
-        			Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
-        			//if(e instanceof EntityItem){
-        				if(vacuumItem(((EntityItem)e).getEntityItem()))
-        					this.worldObj.removeEntity(e);
-        			//}
+        		if(!ae.isEmpty()){
+        			for(int n = ae.size() - 1; n >= 0; n--){
+        				Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
+        				ItemStack leftover = vacuumItem(((EntityItem)e).getEntityItem());
+        				this.worldObj.removeEntity(e);
+        				if(leftover != null){
+        					this.entityDropItem(leftover, 0.0f);
+        				}
+        			}
         		}
         	}
         	vacuumTime++;
         }
-        
+        shiftInventory();
     }
     
     
-
+	/**
+	 * condenses inventory when there's an overflow buffer
+	 */
+	private void shiftInventory(){
+		if(!auxInventory.isEmpty()){
+			if(equipment[equipment.length - 1] == null){
+				// pull item from overflow buffer
+				equipment[equipment.length - 1] = auxInventory.pop();
+			}
+			for(int dstSlot = 5; dstSlot < equipment.length; dstSlot++){
+				if(equipment[dstSlot] == null){
+					// shift next item to here
+					int srcSlot = dstSlot+1;
+					while( srcSlot < equipment.length && equipment[srcSlot] == null){
+						srcSlot++;
+					}
+					if(srcSlot == equipment.length){
+						// inventory already condensed
+						return;
+					}
+					equipment[dstSlot] = equipment[srcSlot];
+					equipment[srcSlot] = null;
+				}
+			}
+		}
+	}
 
 	@Override
     public void writeEntityToNBT(final NBTTagCompound root) {
@@ -207,6 +234,18 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             nbttaglist.appendTag(nbttagcompound1);
         }
         root.setTag("Equipment", nbttaglist);
+        if(!this.auxInventory.isEmpty()){
+        	final NBTTagList nbtauxtaglist = new NBTTagList();
+        	Iterator<ItemStack> iter = this.auxInventory.iterator();
+        	while (iter.hasNext()) {
+        		ItemStack i = iter.next();
+        		if(i == null) continue;
+        		final NBTTagCompound nbttagcompound1 = new NBTTagCompound();
+        		i.writeToNBT(nbttagcompound1);
+        		nbtauxtaglist.appendTag(nbttagcompound1);
+        	}
+        	root.setTag("Aux", nbtauxtaglist);
+        }
         if(vacuumTime < VACUUM_TIMELIMIT)root.setByte("Vac", vacuumTime);
         if(owner != null){
         	final NBTTagCompound nbtTagCompound = new NBTTagCompound();
@@ -225,6 +264,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             }
         }
     	root.removeTag("Equipment");
+    	if(root.hasKey("Aux")){
+    		final NBTTagList nbttaglist = root.getTagList("Aux", 10);
+    		for (int i = 0; i < equipment.length && i < nbttaglist.tagCount(); ++i) {
+    			this.auxInventory.addLast(ItemStack.loadItemStackFromNBT(nbttaglist.getCompoundTagAt(i)));
+    		}
+    	}
         super.readEntityFromNBT(root);
         // now read the rest of the tag
         if(root.hasKey("Vac")){
@@ -259,8 +304,9 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	}
     	// use shovel to dispose the body
     	if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
-    		Item item = ((EntityPlayer)src.getEntity()).getHeldItem().getItem();
-    		if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(new ItemStack(item), "shovel") != -1){
+    		ItemStack itemStack = ((EntityPlayer)src.getEntity()).getHeldItem();
+    		Item item = itemStack.getItem();
+    		if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(itemStack, "shovel") >= 0){
     			shovelHits++;
     			super.damageEntity(src,amount);
     			if(shovelHits >= shovelHitLimit){
@@ -326,37 +372,114 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     protected void dropEquipment(final boolean doDrop, final int dropProbability) {
-        for (int j = 0; j < this.getInventory().length; ++j) {
-            final ItemStack itemstack = this.getEquipmentInSlot(j);
-            if (itemstack != null && doDrop  ) {
-                this.entityDropItem(itemstack, 0.0f);
-            }
-        }
+    	if(!doDrop) return;
+    	for (int j = 0; j < this.equipment.length; ++j) {
+    		final ItemStack itemstack = equipment[j];
+    		if (itemstack != null ) {
+    			this.entityDropItem(itemstack, 0.0f);
+    		}
+    	}
+    	if(this.auxInventory.size() > 0){
+    		Iterator<ItemStack> buffer = this.auxInventory.iterator();
+    		while(buffer.hasNext()){
+    			ItemStack itemstack = buffer.next();
+    			if(itemstack == null) continue;
+    			this.entityDropItem(itemstack, 0.0f);
+    		}
+    	}
     }
-    
-    public boolean vacuumItem(ItemStack item){
-    	if(item == null) return true;
-    	int nextIndex = 5;
-    	while(nextIndex < equipment.length && equipment[nextIndex] != null){
-    		if(canStack(equipment[nextIndex],item)){
-    			int maxStackSize = Math.min(item.getMaxStackSize(),this.getInventoryStackLimit());
-    			if(item.stackSize + equipment[nextIndex].stackSize < maxStackSize){
-    				equipment[nextIndex].stackSize += item.stackSize;
-    				return true;
+
+
+    boolean notFull(){
+    	for(int i = 5; i < equipment.length; i++){
+    		if(equipment[i] == null){
+    			return true;
+    		}
+    	}
+    	return auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize;
+    }
+    /**
+     *
+     * @param item
+     * @return Returns null if the item was taken up, returns an ItemStack if
+     * the item was not taken up (means that it was partially stacked and the
+     * remainder was returned)
+     */
+    public ItemStack vacuumItem(ItemStack item){
+    	if(item == null) return null;
+    	int nextIndex = 5; // after the armor and held item slots
+    	while(nextIndex < equipment.length){
+    		if(equipment[nextIndex] != null){
+    			if(canStack(item,equipment[nextIndex])){
+    				ItemStack remainder = stackItemStacks(equipment[nextIndex],item);
+    				if(remainder != null){
+    					item = remainder;
+    				} else {
+    					return null;
+    				}
     			}
+    		} else {
+    			equipment[nextIndex] = applyItemDamage(item);
+    			return null;
     		}
     		nextIndex++;
     	}
-    	if(nextIndex == equipment.length) return false; // inventory is full
-    	equipment[nextIndex] = applyItemDamage(item);
-    	return true;
+    	// inventory is full
+    	if(auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize){
+    		// put item in the overflow
+    		Iterator<ItemStack> buffer = this.auxInventory.iterator();
+    		while(buffer.hasNext()){
+    			ItemStack bufferItem = buffer.next();
+    			if(canStack(bufferItem,item)){
+    				item = stackItemStacks(bufferItem,item);
+    				if(item == null){
+    					return null;
+    				}
+    			}
+    		}
+    		//System.out.println("Adding "+item.toString()+" to the buffer.");
+    		this.auxInventory.addLast(applyItemDamage(item));
+    		return null;
+    	} else {
+    		// and the overflow buffer is full too
+    		return item.copy();
+    	}
+    }
+    /**
+     * Stacks two ItemStacks, returning the remainder.
+     * @param dest ItemStack to stack into
+     * @param src ItemStack we want to add
+     * @return Returns the leftover items as an ItemStack (returns null if both
+     * stacks can merge into a single stack)
+     */
+    ItemStack stackItemStacks(ItemStack dest, ItemStack src){
+    	if(src.stackSize == 0) return null;
+    	//System.out.println("Stacking "+src.toString()+" into "+dest.toString());
+    	if(canStack(dest,src)){
+    		int maxStackSize = Math.min(dest.getMaxStackSize(),this.getInventoryStackLimit());
+    		if(src.stackSize + dest.stackSize < maxStackSize){
+    			dest.stackSize += src.stackSize;
+    			return null;
+    		} else if(dest.stackSize < maxStackSize){
+    			int difference = maxStackSize - dest.stackSize;
+    			dest.stackSize += difference;
+    			src.stackSize -= difference;
+    			if(src.stackSize == 0) return null;
+    			return src;
+    		} else {
+    			return src;
+    		}
+    	} else {
+    		// cannot stack
+    		return src;
+    	}
     }
     
     private boolean canStack(ItemStack a, ItemStack b){
     	if(a == null || b == null) return false;
-    	if(a.getItem() == b.getItem()){
+    	if(a.getItem() == b.getItem() && a.isStackable()){
     		if(a.getItemDamage() != b.getItemDamage()) return false;
-        	if(a.isStackable() == false )return false;
+    		if(a.isStackable() == false )return false;
     		if(a.stackSize + b.stackSize > Math.min(a.getMaxStackSize(),this.getInventoryStackLimit())) return false;
     		if(a.hasTagCompound() == false && b.hasTagCompound() == false){
     			return true;
@@ -384,7 +507,9 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         // do nothing
     }
 	
-
+	@Override public boolean canBreatheUnderwater() {
+		return true;
+	}
 	
 	@Override
     protected int getExperiencePoints(final EntityPlayer p_getExperiencePoints_1_) {
@@ -460,6 +585,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		for (int i = 0; i < this.equipment.length; ++i) {
             this.equipment[i] = null;
         }
+		this.auxInventory.clear();
 	}
 	public void clearInventory(){
 		clear();

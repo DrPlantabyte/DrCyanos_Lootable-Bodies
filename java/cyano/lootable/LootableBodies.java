@@ -19,9 +19,10 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.1.3";
+    public static final String VERSION = "1.2.0";
 	
     public static boolean fancyCorpses = false;
+    public static int corpseAuxilleryInventorySize = 54;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
@@ -73,6 +74,15 @@ public class LootableBodies {
     			EntityLootableBody.hurtByOther,
     			EntityLootableBody.hurtByWeapons);
 
+    	
+    	corpseAuxilleryInventorySize = Math.max(
+    			config.getInt("corpse_inventory_size", "options",
+    			corpseAuxilleryInventorySize + EntityLootableBody.INVENTORY_SIZE,
+    			EntityLootableBody.INVENTORY_SIZE,Short.MAX_VALUE/2,
+    			"The maximum number of items that can be stored in a \n"
+    			+ "corpse. Note that only 54 can be seen at a time")
+    			- EntityLootableBody.INVENTORY_SIZE,0);
+    	
 	//	OreDictionary.initVanillaEntries()
 		config.save();
 		proxy.preInit(event);
