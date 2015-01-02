@@ -19,10 +19,13 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.2.0";
+    public static final String VERSION = "1.3.0";
 	
     public static boolean fancyCorpses = false;
     public static int corpseAuxilleryInventorySize = 54;
+    
+    public static boolean allowCorpseDecay = false;
+    public static int corpseDecayTime = 3600;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
@@ -83,12 +86,29 @@ public class LootableBodies {
     			+ "corpse. Note that only 54 can be seen at a time")
     			- EntityLootableBody.INVENTORY_SIZE,0);
     	
+    	
+    	allowCorpseDecay = config.getBoolean("enable_corpse_decay", "corpse decay", false,
+    			"If true, corpses will self-destruct after a preiod of time.");
+    	String decayTime = config.getString("corpse_decay_time", "corpse decay", "1:00:00",
+    			"Time after death before a corpse will self-destruct (if the \n"
+    					+ "enable_corpse_decay option is set to true). \n"
+    					+ "The format is hours:minutes:seconds or just hours:minutes");
+    	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2); // 2 second minimum
+
 	//	OreDictionary.initVanillaEntries()
 		config.save();
 		proxy.preInit(event);
     }
 
-	
+    private int parseTimeInSeconds(String time) {
+    	String[] component = time.split(":");
+    	int hr = 0,min=0,sec=0;
+    	if(component.length > 0)hr = Integer.parseInt(component[0].trim());
+    	if(component.length > 1)min = Integer.parseInt(component[1].trim());
+    	if(component.length > 2)sec = Integer.parseInt(component[2].trim());
+    	return 3600 * hr + 60 * min + sec;
+    }
+    
 	@EventHandler
 	public void init(FMLInitializationEvent event) {
 		// register entities

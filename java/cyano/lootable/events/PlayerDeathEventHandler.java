@@ -7,6 +7,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
 
 public class PlayerDeathEventHandler {
@@ -27,6 +28,7 @@ public class PlayerDeathEventHandler {
 //System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
 			// set items
 			corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
+			corpse.setDecayTimer(LootableBodies.corpseDecayTime);
 			for(int i = 0; i < 4; i++){
 				corpse.setCurrentItemOrArmor(i+1, EntityLootableBody.applyItemDamage(player.getCurrentArmor(i)));
 				player.inventory.armorInventory[i] = null;
