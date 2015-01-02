@@ -25,7 +25,7 @@ public class LootableBodies {
     public static int corpseAuxilleryInventorySize = 54;
     
     public static boolean allowCorpseDecay = false;
-    public static int corpseDecayTime = 3600;
+    public static long corpseDecayTime = 3600*20;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
@@ -93,7 +93,7 @@ public class LootableBodies {
     			"Time after death before a corpse will self-destruct (if the \n"
     					+ "enable_corpse_decay option is set to true). \n"
     					+ "The format is hours:minutes:seconds or just hours:minutes");
-    	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2); // 2 second minimum
+    	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
 
 	//	OreDictionary.initVanillaEntries()
 		config.save();

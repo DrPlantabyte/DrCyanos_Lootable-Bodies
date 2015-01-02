@@ -25,10 +25,12 @@ public class PlayerDeathEventHandler {
 			float rotation = player.getRotationYawHead();
 			EntityLootableBody corpse = new EntityLootableBody(w);
 			corpse.setPositionAndRotation(player.posX, player.posY, player.posZ,rotation,0);
+			if(LootableBodies.allowCorpseDecay){
+				corpse.setDeathTime(w.getTotalWorldTime());
+			}
 //System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
 			// set items
 			corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
-			corpse.setDecayTimer(LootableBodies.corpseDecayTime);
 			for(int i = 0; i < 4; i++){
 				corpse.setCurrentItemOrArmor(i+1, EntityLootableBody.applyItemDamage(player.getCurrentArmor(i)));
 				player.inventory.armorInventory[i] = null;
