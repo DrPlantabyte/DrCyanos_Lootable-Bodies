@@ -9,6 +9,7 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerDropsEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
 
 public class PlayerDeathEventHandler {
@@ -26,6 +27,7 @@ public class PlayerDeathEventHandler {
 			float rotation = player.getRotationYawHead();
 			EntityLootableBody corpse = new EntityLootableBody(w);
 			corpse.setPositionAndRotation(player.posX, player.posY, player.posZ,rotation,0);
+			if(LootableBodies.allowCorpseDecay){corpse.setDecayTimer(LootableBodies.corpseDecayTime);}
 //System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
 			// set items
 			corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));

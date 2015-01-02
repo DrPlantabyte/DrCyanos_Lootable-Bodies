@@ -63,6 +63,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	private int shovelHits = 0;
 	private static final int shovelHitLimit = 3;
 	
+	private int decayCountdown_s = Integer.MAX_VALUE;
+	
 	public EntityLootableBody(World w) {
 		super(w);
 		this.isImmuneToFire = (!hurtByFire) || invulnerable;
@@ -151,6 +153,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	@Override
     public void onEntityUpdate() {
         super.onEntityUpdate();
+        if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
+        	// count-down decay timer
+        	this.decayCountdown_s--;
+        	if(this.decayCountdown_s <= 0){
+        		this.dropEquipment(true, 0);
+        		this.kill();
+        	}
+        }
         if(vacuumTime < VACUUM_TIMELIMIT){
         	// vacuum up loose items (which may be dropped by other mods that give expanded inventories)
         	if(!this.worldObj.isRemote  && this.notFull()){
@@ -236,6 +246,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             NBTUtil.writeGameProfile(nbtTagCompound, owner);
             root.setTag("Owner", nbtTagCompound);
         }
+        root.setInteger("DecayTime", this.decayCountdown_s);
     }
     
     @Override
@@ -260,6 +271,11 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         	this.vacuumTime = root.getByte("Vac");
         } else {
         	this.vacuumTime = VACUUM_TIMELIMIT;
+        }
+        if(root.hasKey("DecayTime")){
+        	this.setDecayTimer(root.getInteger("DecayTime"));
+        } else if(LootableBodies.allowCorpseDecay){
+        	this.setDecayTimer(LootableBodies.corpseDecayTime);
         }
         if (root.hasKey("Yaw")) {
         	this.rotationYaw = root.getFloat("Yaw");
@@ -351,19 +367,21 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     @Override
     protected void dropEquipment(final boolean doDrop, final int dropProbability) {
         if(!doDrop) return;
-    	for (int j = 0; j < this.equipment.length; ++j) {
+    	for (int j = this.equipment.length - 1; j >= 0 ; j--) {
             final ItemStack itemstack = equipment[j];
             if (itemstack != null ) {
                 this.entityDropItem(itemstack, 0.0f);
+                equipment[j] = null;
             }
         }
-    	if(this.auxInventory.size() > 0){
+    	if(!auxInventory.isEmpty()){
 	    	Iterator<ItemStack> buffer = this.auxInventory.iterator();
 			while(buffer.hasNext()){
 				ItemStack itemstack = buffer.next();
 				if(itemstack == null) continue;
 				this.entityDropItem(itemstack, 0.0f);
 			}
+			auxInventory.clear();
     	}
     }
     
@@ -454,6 +472,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
     
     public static ItemStack applyItemDamage(ItemStack itemstack){
+    	if(additionalItemDamage == 0) return itemstack;
     	if (itemstack != null && itemstack.isItemStackDamageable()) {
             final int newDamageValue = itemstack.getItemDamage() + additionalItemDamage;
             itemstack.setItemDamage(Math.min(newDamageValue, itemstack.getMaxDamage() - 1));
@@ -473,6 +492,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	return false;
     }
 	
+    public void setDecayTimer(int seconds){
+    	this.decayCountdown_s = seconds;
+    }
+    
     @Override
     public int getTalkInterval() {
         return 1200;
