@@ -63,7 +63,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	private int shovelHits = 0;
 	private static final int shovelHitLimit = 3;
 	
-	private int decayCountdown_s = Integer.MAX_VALUE;
+	private long deathTimestamp = Long.MAX_VALUE;
 	
 	public EntityLootableBody(World w) {
 		super(w);
@@ -155,8 +155,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         super.onEntityUpdate();
         if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
         	// count-down decay timer
-        	this.decayCountdown_s--;
-        	if(this.decayCountdown_s <= 0){
+        	if((worldObj.getTotalWorldTime() - this.deathTimestamp) > LootableBodies.corpseDecayTime){
         		this.dropEquipment(true, 0);
         		this.kill();
         	}
@@ -246,7 +245,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             NBTUtil.writeGameProfile(nbtTagCompound, owner);
             root.setTag("Owner", nbtTagCompound);
         }
-        root.setInteger("DecayTime", this.decayCountdown_s);
+        root.setLong("DeathTime", this.deathTimestamp);
     }
     
     @Override
@@ -272,10 +271,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         } else {
         	this.vacuumTime = VACUUM_TIMELIMIT;
         }
-        if(root.hasKey("DecayTime")){
-        	this.setDecayTimer(root.getInteger("DecayTime"));
-        } else if(LootableBodies.allowCorpseDecay){
-        	this.setDecayTimer(LootableBodies.corpseDecayTime);
+        if(root.hasKey("DeathTime")){
+        	this.deathTimestamp = (root.getLong("DeathTime"));
         }
         if (root.hasKey("Yaw")) {
         	this.rotationYaw = root.getFloat("Yaw");
@@ -492,8 +489,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	return false;
     }
 	
-    public void setDecayTimer(int seconds){
-    	this.decayCountdown_s = seconds;
+    public void setDeathTime(long timestamp){
+    	this.deathTimestamp = timestamp;
     }
     
     @Override
