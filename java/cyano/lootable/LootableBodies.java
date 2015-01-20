@@ -19,8 +19,9 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.3.0";
-	
+    public static final String VERSION = "1.3.1";
+
+    public static boolean addBonesToCorpse = true;
     public static boolean fancyCorpses = false;
     public static int corpseAuxilleryInventorySize = 54;
     
@@ -77,6 +78,9 @@ public class LootableBodies {
     			EntityLootableBody.hurtByOther,
     			EntityLootableBody.hurtByWeapons);
 
+    	addBonesToCorpse = config.getBoolean("add_bones_to_corpse", "options", true,
+    			"If true, corpses will have bones and rotten flesh added to them.");
+    	
     	
     	corpseAuxilleryInventorySize = Math.max(
     			config.getInt("corpse_inventory_size", "options",
