@@ -41,8 +41,10 @@ public class PlayerDeathEventHandler {
 				player.inventory.mainInventory[i] = null;
 			}
 			 // for the LOLs
-			corpse.vacuumItem(new ItemStack(Items.rotten_flesh,2));
-			corpse.vacuumItem(new ItemStack(Items.bone,4));
+			if(LootableBodies.addBonesToCorpse){
+				corpse.vacuumItem(new ItemStack(Items.rotten_flesh,2));
+				corpse.vacuumItem(new ItemStack(Items.bone,4));
+			}
 			
 			w.spawnEntityInWorld(corpse);
 			corpse.setOwner(player.getGameProfile());
