@@ -20,7 +20,7 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.3.1";
+    public static final String VERSION = "1.3.2";
 	
     public static boolean addBonesToCorpse = true;
     public static boolean fancyCorpses = false;
