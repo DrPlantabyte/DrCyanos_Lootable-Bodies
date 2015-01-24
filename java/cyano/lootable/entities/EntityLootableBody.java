@@ -507,7 +507,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     public static ItemStack applyItemDamage(ItemStack itemstack){
     	if(additionalItemDamage == 0) return itemstack;
-    	if (itemstack != null && itemstack.isItemStackDamageable()) {
+    	if (itemstack != null 
+                && itemstack.isItemStackDamageable()
+                && itemstack.getItem().isDamageable()
+                && (!itemstack.isStackable())
+                && (!itemstack.getItem().getHasSubtypes())
+                && (itemstack.getItem().getMaxDamage() > 0) ) {
             final int newDamageValue = itemstack.getItemDamage() + additionalItemDamage;
             itemstack.setItemDamage(Math.min(newDamageValue, itemstack.getMaxDamage() - 1));
         }
