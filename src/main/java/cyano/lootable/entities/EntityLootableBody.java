@@ -67,6 +67,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	public EntityLootableBody(World w) {
 		super(w);
+		this.setSize(0.85f, 0.75f);
 		this.isImmuneToFire = (!hurtByFire) || invulnerable;
 		vacuumTime = 0;
 		this.getDataWatcher().addObject(WATCHER_ID_BUSY, (byte)0);
