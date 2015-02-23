@@ -27,20 +27,22 @@ public class PlayerDeathEventHandler {
 			corpse.setPositionAndRotation(player.posX, player.posY, player.posZ,rotation,0);
 			corpse.setDeathTime(w.getTotalWorldTime());
 //System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
-			// set items
-			corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
-			for(int i = 0; i < 4; i++){
-				corpse.setCurrentItemOrArmor(i+1, EntityLootableBody.applyItemDamage(player.getCurrentArmor(i)));
-				player.inventory.armorInventory[i] = null;
-			}
-			for(int i = 0; i < player.inventory.mainInventory.length; i++){
-				corpse.vacuumItem(player.inventory.mainInventory[i]);
-				player.inventory.mainInventory[i] = null;
+			if(w.getGameRules().getGameRuleBooleanValue("keepInventory") == false){
+				// set items
+				corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
+				for(int i = 0; i < 4; i++){
+					corpse.setCurrentItemOrArmor(i+1, EntityLootableBody.applyItemDamage(player.getCurrentArmor(i)));
+					player.inventory.armorInventory[i] = null;
+				}
+				for(int i = 0; i < player.inventory.mainInventory.length; i++){
+					corpse.vacuumItem(player.inventory.mainInventory[i]);
+					player.inventory.mainInventory[i] = null;
+				}
 			}
 			 // for the LOLs
 			if(LootableBodies.addBonesToCorpse){
-				corpse.vacuumItem(new ItemStack(Items.rotten_flesh,2));
-				corpse.vacuumItem(new ItemStack(Items.bone,4));
+				corpse.vacuumItem(new ItemStack(Items.rotten_flesh,w.rand.nextInt(3)+1));
+				corpse.vacuumItem(new ItemStack(Items.bone,w.rand.nextInt(3)+1));
 			}
 			
 			w.spawnEntityInWorld(corpse);

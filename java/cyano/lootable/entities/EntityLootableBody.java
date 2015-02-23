@@ -46,13 +46,11 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	final static byte VACUUM_TIMELIMIT = 20;
 	final static int VACUUM_RADIUS = 3;
 	
-	final static int WATCHER_ID_BUSY = 27; // data watcher used to exclude multiple people looting body at same time
 	final static int WATCHER_ID_OWNER = 28;
 	
 	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
 	
-	// TODO: way to dispose an invincible body
 	protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
 	protected final java.util.Deque<ItemStack> auxInventory = new java.util.LinkedList<ItemStack>();
 	private byte vacuumTime = 0;
@@ -64,25 +62,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	public EntityLootableBody(World w) {
 		super(w);
+		this.setSize(0.85f, 0.75f);
 		this.isImmuneToFire = (!hurtByFire) || invulnerable;
 		vacuumTime = 0;
-		this.getDataWatcher().addObject(WATCHER_ID_BUSY, (byte)0);
 		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
 	}
 	
-	public boolean isBusy(){
-		return this.getDataWatcher().getWatchableObjectByte(WATCHER_ID_BUSY) != 0;
-	}
-	
-	public void setBusy(boolean busy){
-		if(worldObj.isRemote) return;
-		// server-side only
-		if(busy){
-			this.getDataWatcher().updateObject(WATCHER_ID_BUSY, (byte)1);
-		} else {
-			this.getDataWatcher().updateObject(WATCHER_ID_BUSY, (byte)0);
-		}
-	}
 	
 	@Override
     protected void applyEntityAttributes() {
@@ -581,11 +566,6 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     protected boolean interact(final EntityPlayer player) {
-//    	if(player.getHeldItem().getItem() instanceof ItemSpade && player.isSneaking()){
-//    		this.kill();
-//    		return true;
-//    	}
-    	if(isBusy()) return false;
     	player.displayGUIChest(this);
         return true;
     }
@@ -619,7 +599,6 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 	@Override
 	public void closeInventory() {
-		setBusy(false);
 		playSound("mob.horse.leather");
 	}
 
@@ -702,7 +681,6 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 	@Override
 	public void openInventory() {
-		setBusy(true);
 		playSound("mob.horse.armor");
 	}
 
