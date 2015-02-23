@@ -1,9 +1,15 @@
+/README.txt
+/.classpath
+/forge-1.8-11.14.0.1299-changelog.txt
+/gradlew
+/gradlew.bat
+/bin/*
+/.gradle/*
+/eclipse/.metadata/.plugins/org.eclipse.core.resources/.history/*
+/eclipse/.metadata/*.dat
+/eclipse/.metadata/*.tree
+/eclipse/.metadata/*.index
+*.index
 *~
-*.class
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-
+/temp/*
+temp/*
