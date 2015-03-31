@@ -4,26 +4,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
-import com.google.common.collect.Iterables;
-import com.mojang.authlib.GameProfile;
-
-import cyano.lootable.LootableBodies;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCreature;
-import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTUtil;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.DamageSource;
@@ -31,6 +23,10 @@ import net.minecraft.util.StringUtils;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+
+import com.mojang.authlib.GameProfile;
+
+import cyano.lootable.LootableBodies;
 
 public class EntityLootableBody extends net.minecraft.entity.EntityLiving implements IInventory{
 
@@ -302,6 +298,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     		// fell out of the world
     		this.kill();
     	}
+    	
+    	// spit the body out of a wall is hurt by block suffocation
+    	if(src.equals(DamageSource.inWall)){
+    		jumpOutOfWall();
+    	}
+    	
     	// special cases handled before this point
     	// general cases:
     	if(invulnerable) return;
@@ -315,6 +317,64 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(this.hurtByOther) super.damageEntity(src, amount);
     	
 
+    }
+
+    public void jumpOutOfWall(){
+    	double root2 = 1.414213562;
+		BlockPos currentCoord = new BlockPos(this.posX, this.posY, this.posZ);
+		// first try going out to the nearest adjacent block
+    	double[] vector = new double[3];
+    	vector[0] = currentCoord.getX()+0.5 - this.posX;
+    	vector[1] = 0;
+    	vector[2] = currentCoord.getZ()+0.5 - this.posZ;
+    	double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	vector[0] *= normalizer;
+    	vector[1] *= normalizer;
+    	vector[2] *= normalizer;
+    	IBlockState bs = worldObj.getBlockState(new BlockPos(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]));
+    	if(!(bs.getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+    		return;
+    	}
+    	
+		// then try finding an open space in all adjacent blocks
+    	BlockPos n;
+    	n = currentCoord.up();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+    	n = currentCoord.north();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+    	n = currentCoord.east();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+    	n = currentCoord.south();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+    	n = currentCoord.west();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+    	n = currentCoord.down();
+    	if(!(worldObj.getBlockState(n).getBlock().getMaterial().blocksMovement())){
+    		this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+    		return;
+    	}
+		// then if the above fails, move 1.5 blocks in a random direction
+    	vector[0] = worldObj.rand.nextDouble();
+    	vector[1] = worldObj.rand.nextDouble();
+    	vector[2] = worldObj.rand.nextDouble();
+    	normalizer = root2/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
     }
     
     @Override

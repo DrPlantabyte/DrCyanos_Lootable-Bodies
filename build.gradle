@@ -23,12 +23,12 @@ allprojects {
     targetCompatibility = 1.7
 }
 
-version = "1.3.3"
+version = "1.3.4"
 group= "cyano.lootable"
 archivesBaseName = "CyanosLootableBodies"
 
 minecraft {
-    version = "1.8-11.14.0.1299"
+    version = "1.8-11.14.1.1334"
     runDir = "eclipse"
     
     // the mappings can be changed at any time, and must be in the following format.
