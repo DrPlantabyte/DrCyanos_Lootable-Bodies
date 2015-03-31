@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
@@ -59,6 +60,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	private static final int shovelHitLimit = 3;
 	
 	private long deathTimestamp = Long.MAX_VALUE;
+	
+	private boolean deadMode = false;
 	
 	public EntityLootableBody(World w) {
 		super(w);
@@ -157,6 +160,14 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		super.onEntityUpdate();
 		if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
 			// count-down decay timer
+			if(LootableBodies.decayOnlyWhenEmpty){
+				 for(int i = 0; i < this.equipment.length; i++){
+				 if(this.equipment[i] != null){
+				 this.deathTimestamp = worldObj.getTotalWorldTime();
+				 break;
+				 }
+				 }
+				 }
 			if((worldObj.getTotalWorldTime() - this.deathTimestamp) > LootableBodies.corpseDecayTime){
 				this.dropEquipment(true, 0);
 				this.kill();
@@ -186,6 +197,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         	vacuumTime++;
         }
         shiftInventory();
+        if(deadMode){
+        	 this.dropEquipment(true, 0);
+        	 worldObj.removeEntity(this);
+        	 }
     }
     
     
@@ -317,6 +332,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     		// fell out of the world
     		this.kill();
     	}
+    	
+    	// spit the body out of a wall is hurt by block suffocation
+    	 if(src.equals(DamageSource.inWall)){
+    	 jumpOutOfWall();
+    	 }
+    	
     	// special cases handled before this point
     	// general cases:
     	if(invulnerable) return;
@@ -328,11 +349,95 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(src == DamageSource.cactus && this.hurtByCactus) super.damageEntity(src, amount);
     	if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
     	if(this.hurtByOther) super.damageEntity(src, amount);
+    	
+    	// He's dead, Jim
+    	 if(super.getHealth() <= 0){
+    	 deadMode = true;
+    	 }
     }
+    
+    
+    public void jumpOutOfWall(){
+    	 double root2 = 1.414213562;
+    	 double[] currentCoord = {this.posX, this.posY, this.posZ};
+    	 // first try going out to the nearest adjacent block
+    	 double[] vector = new double[3];
+    	 vector[0] = currentCoord[0]+0.5 - this.posX;
+    	 vector[1] = 0;
+    	 vector[2] = currentCoord[2]+0.5 - this.posZ;
+    	 double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	 vector[0] *= normalizer;
+    	 vector[1] *= normalizer;
+    	 vector[2] *= normalizer;
+    	 Block block = worldObj.getBlock((int)(this.posX+vector[0]), (int)(this.posY+vector[1]), (int)(this.posZ+vector[2]));
+    	 if(!(block.getMaterial().blocksMovement())){
+    	 this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+    	 return;
+    	 }
+    	
+    	 // then try finding an open space in all adjacent blocks
+    	 int[] n = new int[3];
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[1]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[0]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[0]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[2]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[2]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[1]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 // then if the above fails, move 1.5 blocks in a random direction
+    	 vector[0] = worldObj.rand.nextDouble();
+    	 vector[1] = worldObj.rand.nextDouble();
+    	 vector[2] = worldObj.rand.nextDouble();
+    	 normalizer = root2/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	 this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+    	 }
     
     @Override
     protected void kill() {
-        this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+    	deadMode = true;
+    	this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+    	 this.markDirty();
     }
     
     
@@ -667,6 +772,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 	@Override
 	public boolean isUseableByPlayer(EntityPlayer player) {
+		if(deadMode) return false;
 		// check distance
 		return player.getDistanceSq(this.posX, this.posY, this.posZ) <= 16.0;
 	}
