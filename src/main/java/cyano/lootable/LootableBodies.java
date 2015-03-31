@@ -27,6 +27,7 @@ public class LootableBodies {
     public static int corpseAuxilleryInventorySize = 54;
     
     public static boolean allowCorpseDecay = false;
+    public static boolean decayOnlyWhenEmpty = false;
     public static long corpseDecayTime = 3600*20;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
@@ -98,7 +99,13 @@ public class LootableBodies {
     	
     	
     	allowCorpseDecay = config.getBoolean("enable_corpse_decay", "corpse decay", false,
-				"If true, corpses will self-destruct after a preiod of time.");
+				"If true, corpses will self-destruct after a period of time.");
+    	decayOnlyWhenEmpty = config.getBoolean("empty_only_decay", "corpse decay", false,
+				"If true and enable_corpse_decay is also true, corpses will \n"
+				+ "self-destruct after being empty for a period of time (will \n"
+				+ "not decay if there are any items on the corpse). If using this \n"
+				+ "option, you will probably want to also disable the \n"
+				+ "add_bones_to_corpse option.");
     	String decayTime = config.getString("corpse_decay_time", "corpse decay", "1:00:00",
 				"Time after death before a corpse will self-destruct (if the \n"
 				+ "enable_corpse_decay option is set to true). \n"

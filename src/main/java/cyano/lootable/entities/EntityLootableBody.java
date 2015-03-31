@@ -60,6 +60,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	
 	private long deathTimestamp = Long.MAX_VALUE;
 	
+	private boolean deadMode = false;
+	
 	public EntityLootableBody(World w) {
 		super(w);
 		this.setSize(0.85f, 0.75f);
@@ -137,9 +139,18 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         super.onEntityUpdate();
         if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
         	// count-down decay timer
+        	if(LootableBodies.decayOnlyWhenEmpty){
+        		for(int i = 0; i < this.equipment.length; i++){
+        			if(this.equipment[i] != null){
+        				this.deathTimestamp = worldObj.getTotalWorldTime();
+        				break;
+        			}
+        		}
+        	}
         	if((worldObj.getTotalWorldTime() - this.deathTimestamp) > LootableBodies.corpseDecayTime){
         		this.dropEquipment(true, 0);
         		this.kill();
+        		return;
         	}
         }
         if(vacuumTime < VACUUM_TIMELIMIT){
@@ -166,6 +177,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         	vacuumTime++;
         }
         shiftInventory();
+        if(deadMode){
+        	this.dropEquipment(true, 0);
+        	worldObj.removeEntity(this);
+        }
     }
     
 	/**
@@ -316,7 +331,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
     	if(this.hurtByOther) super.damageEntity(src, amount);
     	
-
+    	// He's dead, Jim
+    	if(super.getHealth() <= 0){
+    		deadMode = true;
+    	}
     }
 
     public void jumpOutOfWall(){
@@ -379,7 +397,9 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     protected void kill() {
+    	deadMode = true;
         this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+        this.markDirty();
     }
     
     @Override
@@ -719,6 +739,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 	@Override
 	public boolean isUseableByPlayer(EntityPlayer player) {
 		// check distance
+		if(deadMode) return false;
 		return player.getDistanceSq(this.posX, this.posY, this.posZ) <= 16.0;
 	}
 
