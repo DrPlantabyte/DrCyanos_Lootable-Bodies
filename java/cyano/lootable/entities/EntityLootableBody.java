@@ -359,19 +359,19 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     public void jumpOutOfWall(){
     	 double root2 = 1.414213562;
-    	 double[] currentCoord = {this.posX, this.posY, this.posZ};
+    	 double[] currentCoord = {(int)this.posX, (int)this.posY, (int)this.posZ};
     	 // first try going out to the nearest adjacent block
     	 double[] vector = new double[3];
-    	 vector[0] = currentCoord[0]+0.5 - this.posX;
+    	 vector[0] = this.posX - (currentCoord[0]+0.5) ;
     	 vector[1] = 0;
-    	 vector[2] = currentCoord[2]+0.5 - this.posZ;
+    	 vector[2] = this.posZ - (currentCoord[2]+0.5);
     	 double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
     	 vector[0] *= normalizer;
     	 vector[1] *= normalizer;
     	 vector[2] *= normalizer;
     	 Block block = worldObj.getBlock((int)(this.posX+vector[0]), (int)(this.posY+vector[1]), (int)(this.posZ+vector[2]));
     	 if(!(block.getMaterial().blocksMovement())){
-    	 this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+    	 this.setPosition((int)(this.posX+vector[0])+0.5, (int)(this.posY+vector[1]), (int)(this.posZ+vector[2])+0.5);
     	 return;
     	 }
     	
