@@ -9,6 +9,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.passive.EntityTameable;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -16,11 +17,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.potion.Potion;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.StringUtils;
 import net.minecraft.world.World;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -394,6 +397,94 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	normalizer = root2/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
     	this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
     }
+    
+    @Override
+    public boolean attackEntityFrom(final DamageSource src, float amount) {
+    	// Disable forge hooks to fix plugin bug
+		/*
+		if (!ForgeHooks.onLivingAttack(this, p_attackEntityFrom_1_, p_attackEntityFrom_2_)) {
+	        return false;
+	    }
+		 */
+		if (this.isEntityInvulnerable(src)) {
+			return false;
+		}
+		if (this.worldObj.isRemote) {
+			return false;
+		}
+		this.entityAge = 0;
+		if (this.getHealth() <= 0.0f) {
+			return false;
+		}
+		if (src.isFireDamage() && this.isPotionActive(Potion.fireResistance)) {
+			return false;
+		}
+		if ((src == DamageSource.anvil || src == DamageSource.fallingBlock) && this.getEquipmentInSlot(4) != null) {
+			this.getEquipmentInSlot(4).damageItem((int)(amount * 4.0f + this.rand.nextFloat() * amount * 2.0f), this);
+			amount *= 0.75f;
+		}
+		boolean flag = true;
+		if (this.hurtResistantTime > this.maxHurtResistantTime / 2.0f) {
+			if (amount <= this.lastDamage) {
+				return false;
+			}
+			this.damageEntity(src, amount - this.lastDamage);
+			this.lastDamage = amount;
+			flag = false;
+		}
+		else {
+			this.lastDamage = amount;
+			this.hurtResistantTime = this.maxHurtResistantTime;
+			this.damageEntity(src, amount);
+			final int n = 10;
+			this.maxHurtTime = n;
+			this.hurtTime = n;
+		}
+		this.attackedAtYaw = 0.0f;
+		final Entity entity = src.getEntity();
+		if (entity != null) {
+			if (entity instanceof EntityLivingBase) {
+				this.setRevengeTarget((EntityLivingBase)entity);
+			}
+			if (entity instanceof EntityPlayer) {
+				this.recentlyHit = 100;
+				this.attackingPlayer = (EntityPlayer)entity;
+			}
+			else if (entity instanceof EntityTameable) {
+				final EntityTameable entitywolf = (EntityTameable)entity;
+				if (entitywolf.isTamed()) {
+					this.recentlyHit = 100;
+					this.attackingPlayer = null;
+				}
+			}
+		}
+		if (flag) {
+			this.worldObj.setEntityState(this, (byte)2);
+			if (src != DamageSource.drown) {
+				this.setBeenAttacked();
+			}
+			if (entity != null) {
+				double d1;
+				double d2;
+				for (d1 = entity.posX - this.posX, d2 = entity.posZ - this.posZ; d1 * d1 + d2 * d2 < 1.0E-4; d1 = (Math.random() - Math.random()) * 0.01, d2 = (Math.random() - Math.random()) * 0.01) {}
+				this.knockBack(entity, amount, d1, d2);
+			}
+		}
+		if (this.getHealth() <= 0.0f) {
+			final String s = this.getDeathSound();
+			if (flag && s != null) {
+				this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+			}
+			this.onDeath(src);
+		} else {
+			final String s = this.getHurtSound();
+			if (flag && s != null) {
+				this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+			}
+		}
+		return true;
+    }
+
     
     @Override
     protected void kill() {
