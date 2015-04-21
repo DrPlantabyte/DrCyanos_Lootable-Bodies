@@ -9,6 +9,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.passive.EntityTameable;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -16,11 +17,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.potion.Potion;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.StringUtils;
 import net.minecraft.world.World;
+import net.minecraftforge.common.ForgeHooks;
 
 import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
@@ -308,6 +311,84 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         this.setRotation(this.rotationYaw);
     }
     
+    @Override
+    public boolean attackEntityFrom(final DamageSource src, float amount) {
+    	// disable forge hook to fix bug
+//    	if (ForgeHooks.onLivingAttack(this, src, amount)) {
+//            return false;
+//        }
+    	if (this.isEntityInvulnerable()) {
+    		return false;
+    	}
+    	if (this.worldObj.isRemote) {
+    		return false;
+    	}
+    	this.entityAge = 0;
+    	if (this.getHealth() <= 0.0f) {
+    		return false;
+    	}
+    	if (src.isFireDamage() && this.isPotionActive(Potion.fireResistance)) {
+    		return false;
+    	}
+    	boolean flag = true;
+    	if (this.hurtResistantTime > this.maxHurtResistantTime / 2.0f) {
+    		if (amount <= this.lastDamage) {
+    			return false;
+    		}
+    		this.damageEntity(src, amount - this.lastDamage);
+    		this.lastDamage = amount;
+    		flag = false;
+    	} else {
+    		this.lastDamage = amount;
+    		this.prevHealth = this.getHealth();
+    		this.hurtResistantTime = this.maxHurtResistantTime;
+    		this.damageEntity(src, amount);
+    		final int n = 10;
+    		this.maxHurtTime = n;
+    		this.hurtTime = n;
+    	}
+    	final Entity entity = src.getEntity();
+    	if (entity != null) {
+    		if (entity instanceof EntityPlayer) {
+    			this.recentlyHit = 100;
+    			this.attackingPlayer = (EntityPlayer)entity;
+    		}
+    		else if (entity instanceof EntityTameable) {
+    			final EntityTameable entitywolf = (EntityTameable)entity;
+    			if (entitywolf.isTamed()) {
+    				this.recentlyHit = 100;
+    				this.attackingPlayer = null;
+    			}
+    		}
+    	}
+    	if (flag) {
+    		this.worldObj.setEntityState(this, (byte)2);
+    		if (src != DamageSource.drown) {
+    			this.setBeenAttacked();
+    		}
+    		if (entity != null) {
+    			double d1;
+    			double d2;
+    			for (d1 = entity.posX - this.posX, d2 = entity.posZ - this.posZ; d1 * d1 + d2 * d2 < 1.0E-4; d1 = (Math.random() - Math.random()) * 0.01, d2 = (Math.random() - Math.random()) * 0.01) {}
+    			this.knockBack(entity, amount, d1, d2);
+    		}
+    	}
+    	if (this.getHealth() <= 0.0f) {
+    		final String s = this.getDeathSound();
+    		if (flag && s != null) {
+    			this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+    		}
+    		this.onDeath(src);
+    	}
+    	else {
+    		final String s = this.getHurtSound();
+    		if (flag && s != null) {
+    			this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+    		}
+    	}
+    	return true;
+    }
+    
     @Override protected void damageEntity(final DamageSource src, float amount) {
     //	System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
     	// .kill was called, override invulnerability
@@ -335,7 +416,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     	
     	// spit the body out of a wall is hurt by block suffocation
     	 if(src.equals(DamageSource.inWall)){
-    	 jumpOutOfWall();
+    		 jumpOutOfWall();
     	 }
     	
     	// special cases handled before this point
