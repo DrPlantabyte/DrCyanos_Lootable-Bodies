@@ -28,11 +28,12 @@ public class LootableBodies {
     public static boolean allowCorpseDecay = false;
     public static boolean decayOnlyWhenEmpty = false;
     public static long corpseDecayTime = 3600*20;
-    
+	public static int eioSoulboundID;
+
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
-    
-	
+
+
 	// Mark this method for receiving an FMLEvent (in this case, it's the FMLPreInitializationEvent)
     @EventHandler public void preInit(FMLPreInitializationEvent event)
     {
@@ -80,16 +81,16 @@ public class LootableBodies {
     			EntityLootableBody.hurtByWeapons);
 
     	addBonesToCorpse = config.getBoolean("add_bones_to_corpse", "options", true,
-    			"If true, corpses will have bones and rotten flesh added to them.");
+			    "If true, corpses will have bones and rotten flesh added to them.");
     	
     	
     	corpseAuxilleryInventorySize = Math.max(
-    			config.getInt("corpse_inventory_size", "options",
-    			corpseAuxilleryInventorySize + EntityLootableBody.INVENTORY_SIZE,
-    			EntityLootableBody.INVENTORY_SIZE,Short.MAX_VALUE/2,
-    			"The maximum number of items that can be stored in a \n"
-    			+ "corpse. Note that only 54 can be seen at a time")
-    			- EntityLootableBody.INVENTORY_SIZE,0);
+			    config.getInt("corpse_inventory_size", "options",
+					    corpseAuxilleryInventorySize + EntityLootableBody.INVENTORY_SIZE,
+					    EntityLootableBody.INVENTORY_SIZE, Short.MAX_VALUE / 2,
+					    "The maximum number of items that can be stored in a \n"
+							    + "corpse. Note that only 54 can be seen at a time")
+					    - EntityLootableBody.INVENTORY_SIZE, 0);
     	
     	
     	allowCorpseDecay = config.getBoolean("enable_corpse_decay", "corpse decay", false,
@@ -105,6 +106,7 @@ public class LootableBodies {
     					+ "enable_corpse_decay option is set to true). \n"
     					+ "The format is hours:minutes:seconds or just hours:minutes");
     	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
+	    eioSoulboundID = config.get("options", "eio_Soulbound_id", -1, "EnderIO Soulbound enchantment id").getInt();
 
 	//	OreDictionary.initVanillaEntries()
 		config.save();
