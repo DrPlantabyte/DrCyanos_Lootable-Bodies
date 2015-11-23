@@ -5,7 +5,6 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerDropsEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -16,7 +15,7 @@ public class PlayerDeathEventHandler {
 	
 	@SubscribeEvent(priority=EventPriority.LOW) 
 	//public void playerDeathEvent(PlayerDropsEvent event){
-	public void playerDeathEvent(LivingDeathEvent event){
+	public void playerDeathEvent(PlayerDropsEvent event){
 		if(event.entityLiving instanceof EntityPlayer){
 			
 		EntityPlayer player = (EntityPlayer)event.entityLiving;
