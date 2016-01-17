@@ -61,7 +61,11 @@ public class PlayerDeathEventHandler {
 			}
 			
 			w.spawnEntityInWorld(corpse);
+			try{
 			corpse.setOwner(player.getGameProfile());
+			}catch (Exception e){
+				System.err.println("Error: "+e);
+			}
 			corpse.setRotation(rotation);
 	 //   }
 		}

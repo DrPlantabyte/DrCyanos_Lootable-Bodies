@@ -114,6 +114,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
 	
 	public void setOwner(GameProfile gp){
+	try{
 		owner = gp;
 		updatePlayerProfile();
 		if(gp.getName() != null){
@@ -121,6 +122,10 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		} else {
 			this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
 		}
+	}catch (Exception e){
+		System.err.println("Error: "+e);
+		this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
+	}
 	}
 	
 	public GameProfile getOwner(){
