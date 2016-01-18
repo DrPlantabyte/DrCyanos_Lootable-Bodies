@@ -6,6 +6,7 @@ import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 import net.minecraftforge.event.entity.player.PlayerDropsEvent;
+import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import cyano.lootable.LootableBodies;
@@ -29,7 +30,7 @@ public class PlayerDeathEventHandler {
 			corpse.setDeathTime(w.getTotalWorldTime());
 
 //System.out.println("Creating corpse with UUID "+corpse.getOwner()+" at ("+corpse.posX+","+corpse.posY+","+corpse.posZ+") with rotation "+rotation+".");
-			if(w.getGameRules().getGameRuleBooleanValue("keepInventory") == false){ // keepInventory check
+			if(w.getGameRules().getBoolean("keepInventory") == false){ // keepInventory check
 				// set items
 				corpse.setCurrentItemOrArmor(0, EntityLootableBody.applyItemDamage(withdrawHeldItem(player)));
 				for(int i = 0; i < 4; i++){
@@ -47,7 +48,11 @@ public class PlayerDeathEventHandler {
 				corpse.vacuumItem(new ItemStack(Items.bone,w.rand.nextInt(3)+1));
 			}
 			w.spawnEntityInWorld(corpse);
-			corpse.setOwner(player.getGameProfile());
+			try{
+				corpse.setOwner(player.getGameProfile());
+			}catch(Exception ex){
+				FMLLog.severe("%s: Error occured while setting owner of corpse.\n%s", this.getClass().getName(), ex);
+			}
 			corpse.setRotation(rotation);
 	 //   }
 		}
@@ -60,7 +65,7 @@ public class PlayerDeathEventHandler {
 		for(int i = 0; i < player.inventory.getSizeInventory(); i++){
 			if(player.inventory.getStackInSlot(i) == null)continue;
 			if(item == player.inventory.getStackInSlot(i)){
-				player.inventory.setInventorySlotContents(i, null);
+				player.inventory.removeStackFromSlot(i);
 				break;
 			}
 		}

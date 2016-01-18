@@ -165,7 +165,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         		double x2 = this.posX + VACUUM_RADIUS;
         		double y2 = this.posY + VACUUM_RADIUS;
         		double z2 = this.posZ + VACUUM_RADIUS;
-        		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(x1,y1,z1,x2,y2,z2));
+        		List<EntityItem> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(x1,y1,z1,x2,y2,z2));
         		if(!ae.isEmpty()){
         			for(int n = ae.size() - 1; n >= 0; n--){
         				Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
@@ -672,11 +672,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     protected int getExperiencePoints(final EntityPlayer p_getExperiencePoints_1_) {
         return 0;
     }
-	@SideOnly(Side.CLIENT)
-    @Override
-    public void handleHealthUpdate(final byte p_handleHealthUpdate_1_) {
-       // do nothing
-    }
+	
 	
 	@Override
     protected String getLivingSound() {
@@ -805,14 +801,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 
 
 	@Override
-	public ItemStack getStackInSlotOnClosing(int index) {
-		if (this.equipment[index] != null) {
-            final ItemStack itemStack = this.equipment[index];
-            this.equipment[index] = null;
-            return itemStack;
-        }
-        return null;
+	public ItemStack removeStackFromSlot(int index) {
+		ItemStack x = equipment[index];
+		equipment[index] = null;
+		return x;
 	}
+
 
 
 	@Override
@@ -863,6 +857,8 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
         this.markDirty();
     }
+
+
     
 ///// END OF INVENTORY METHODS /////
    
