@@ -7,6 +7,7 @@ import java.util.UUID;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.passive.EntityTameable;
@@ -73,6 +74,11 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
 		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
 	}
 	
+	@Override
+	public EnumCreatureAttribute getCreatureAttribute()
+	{
+		return EnumCreatureAttribute.UNDEAD;
+	}
 	
 	@Override
     protected void applyEntityAttributes() {
