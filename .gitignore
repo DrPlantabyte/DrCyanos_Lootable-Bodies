@@ -1,8 +1,6 @@
 /README.txt
 /.classpath
-/forge-1.8-11.14.0.1299-changelog.txt
-/gradlew
-/gradlew.bat
+/forge-*-changelog.txt
 /bin/*
 /.gradle/*
 /eclipse/.metadata/.plugins/org.eclipse.core.resources/.history/*
@@ -12,4 +10,9 @@
 *.index
 *~
 /temp/*
+/build/*
+/classes/*
+/.idea/*
 temp/*
+/run/*
+
