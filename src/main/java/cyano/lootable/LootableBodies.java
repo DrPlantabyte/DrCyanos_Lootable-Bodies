@@ -1,9 +1,8 @@
 package cyano.lootable;
 
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.model.ModelResourceLocation;
-import net.minecraft.item.Item;
+import cyano.lootable.entities.EntityLootableBody;
+import cyano.lootable.events.PlayerDeathEventHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Mod;
@@ -13,15 +12,14 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
-import cyano.lootable.entities.EntityLootableBody;
-import cyano.lootable.events.PlayerDeathEventHandler;
 
 @Mod(modid = LootableBodies.MODID, name=LootableBodies.NAME, version = LootableBodies.VERSION)
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.4.1";
-	
+    public static final String VERSION = "2.0.0";
+
+	public static boolean displayNameTag = true;
     public static boolean addBonesToCorpse = true;
     public static boolean fancyCorpses = false;
     public static int corpseAuxilleryInventorySize = 54;
@@ -43,7 +41,7 @@ public class LootableBodies {
     	config.load();
     	
     	boolean invulnderable = true;
-		
+		/*
     	EntityLootableBody.additionalItemDamage = config.getInt("item_damage_on_death", "options", 32, 0,1000,
 				"The amount of damage suffered by damageable items when you \n"
 				+ "die, to a minimum of 1 durability remaining (items will \n"
@@ -55,6 +53,8 @@ public class LootableBodies {
     	fancyCorpses = config.getBoolean("use_player_skin", "options", true,
 				"If true, corpses will have the skins of the player who \n"
 				+ "died. If false, then skeletons will be used instead.");
+    	displayNameTag = config.getBoolean("display_nametag", "options", displayNameTag,
+				"If true, corpses will show their owner's name");
     	
 	addBonesToCorpse = config.getBoolean("add_bones_to_corpse", "options", true,
 			"If true, corpses will have bones and rotten flesh added to them.");
@@ -111,8 +111,8 @@ public class LootableBodies {
 				+ "enable_corpse_decay option is set to true). \n"
 				+ "The format is hours:minutes:seconds or just hours:minutes");
     	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
-    	
-	//	OreDictionary.initVanillaEntries()
+
+		*/
 		config.save();
 		proxy.preInit(event);
     }
@@ -142,9 +142,8 @@ public class LootableBodies {
 	}
 	private int entityIndex = 0;
 	private void registerEntity(Class entityClass){
-		String idName = MODID+"_"+entityClass.getSimpleName();
-		EntityRegistry.registerGlobalEntityID(entityClass, idName, EntityRegistry.findGlobalUniqueEntityId());
- 		EntityRegistry.registerModEntity(entityClass, idName, entityIndex++/*id*/, this, 64/*trackingRange*/, 10/*updateFrequency*/, true/*sendsVelocityUpdates*/);
+		String idName = "Corpse";
+ 		EntityRegistry.registerModEntity(entityClass, idName, entityIndex++/*mod-specific entity id*/, this, 64/*trackingRange*/, 10/*updateFrequency*/, true/*sendsVelocityUpdates*/);
  		
 	}
     
@@ -153,10 +152,7 @@ public class LootableBodies {
     	if(proxy instanceof ServerProxy) return;
     //	registerItemRender(wandGeneric,OrdinaryWand.itemName);
 	}
-    
-    private void registerItemRender(Item i, String itemName){
-    	Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(i, 0, new ModelResourceLocation(MODID+":"+itemName, "inventory"));
-    }
+
 
 	
 	@EventHandler public void postInit(FMLPostInitializationEvent event) {
