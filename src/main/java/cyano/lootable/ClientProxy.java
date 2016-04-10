@@ -1,13 +1,8 @@
 package cyano.lootable;
 
-import cyano.lootable.entities.EntityLootableBody;
-import cyano.lootable.graphics.RenderLootableBody;
-import cyano.lootable.graphics.RenderSkinnedLootableBody;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.client.registry.RenderingRegistry;
-import net.minecraftforge.fml.common.event.*;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 public class ClientProxy extends Proxy{
     @Override
@@ -19,14 +14,7 @@ public class ClientProxy extends Proxy{
     @Override
     public void init(FMLInitializationEvent e) {
         super.init(e);
-        // client-only init code
-        RenderManager rm = Minecraft.getMinecraft().getRenderManager();
-        // add renderers
-        if(LootableBodies.fancyCorpses){
-        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderSkinnedLootableBody(rm));
-        }else {
-        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderLootableBody(rm));
-        }
+		// client-only init code
     	
     }
 
