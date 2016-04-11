@@ -30,7 +30,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private long deathTimestamp;
 
 	private final AtomicReference<GameProfile> gpSwap = new AtomicReference<>(null) ; // for lazy-evaluation of player skins
-
+	private int terminate = -1;
 
 
 	public EntityLootableBody(World w) {
@@ -67,6 +67,16 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 				setGameProfile(null);
 				super.setCustomNameTag("");
 			}
+		}
+
+		if(terminate > 0) terminate--;
+		if(terminate == 0){
+			// needs to be manually deleted for some reason
+			this.dropEquipment(true, 0);
+			getEntityWorld().removeEntity(this);
+		}
+		if(terminate < 0 && (super.getHealth() <= 0 || this.isDead)){
+			terminate = 10;
 		}
 	}
 

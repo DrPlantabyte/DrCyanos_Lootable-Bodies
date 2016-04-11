@@ -21,11 +21,11 @@ public class LootableBodies {
 
 	public static boolean displayNameTag = true;
     public static boolean addBonesToCorpse = true;
-    public static boolean fancyCorpses = false;
-    public static int corpseAuxilleryInventorySize = 54;
+    public static boolean pileOfBones = false; // TODO: non-biped model of a skull
+	public static long ticksPerItemDecay = 10 * 60 * 20; // -1 to disable
     
-    public static boolean allowCorpseDecay = false;
-    public static boolean decayOnlyWhenEmpty = false;
+    public static boolean allowCorpseDecay = true;
+    public static boolean decayOnlyWhenEmpty = true;
     public static long corpseDecayTime = 3600*20;
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
