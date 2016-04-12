@@ -42,6 +42,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private final Deque<ItemStack> auxInventory = new LinkedList<>();
 	private byte vacuumTime = 0;
 	private long deathTimestamp;
+	private boolean leftHanded = false; // TODO: handle handed-ness
 
 	private final AtomicReference<GameProfile> gpSwap = new AtomicReference<>(null) ; // for lazy-evaluation of player skins
 	private int terminate = -1;

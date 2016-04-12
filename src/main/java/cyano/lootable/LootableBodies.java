@@ -18,6 +18,7 @@ public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
     public static final String VERSION = "2.0.0";
+	private static LootableBodies INSTANCE = null;
 
 	public static boolean displayNameTag = true;
     public static boolean addBonesToCorpse = true;
@@ -40,6 +41,7 @@ public class LootableBodies {
 	// Mark this method for receiving an FMLEvent (in this case, it's the FMLPreInitializationEvent)
     @EventHandler public void preInit(FMLPreInitializationEvent event)
     {
+		INSTANCE = this;
         // Do stuff in pre-init phase (read config, create blocks and items, register them)
     	// load config
     	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
@@ -159,12 +161,10 @@ public class LootableBodies {
 	@EventHandler public void postInit(FMLPostInitializationEvent event) {
 		proxy.postInit(event);
 	}
-	/*
-	@EventHandler public void onServerStarting(FMLServerStartingEvent event)
-	{
-		// stub
+
+	public static LootableBodies getInstance(){
+		return INSTANCE;
 	}
-	*/
 	
 	
 	private static boolean or(boolean... bools){
