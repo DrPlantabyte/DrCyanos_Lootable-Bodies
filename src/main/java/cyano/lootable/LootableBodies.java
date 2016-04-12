@@ -23,6 +23,11 @@ public class LootableBodies {
     public static boolean addBonesToCorpse = true;
     public static boolean pileOfBones = false; // TODO: non-biped model of a skull
 	public static long ticksPerItemDecay = 10 * 60 * 20; // -1 to disable
+	public static boolean hurtByEnvironment = false;
+	public static boolean hurtByAttacks = false;
+	public static boolean hurtByOther = false;
+	public static boolean completelyInvulnerable = false;
+	public static float corpseHP = 20;
     
     public static boolean allowCorpseDecay = true;
     public static boolean decayOnlyWhenEmpty = true;
@@ -41,12 +46,8 @@ public class LootableBodies {
     	config.load();
     	
     	boolean invulnderable = true;
-		/*
-    	EntityLootableBody.additionalItemDamage = config.getInt("item_damage_on_death", "options", 32, 0,1000,
-				"The amount of damage suffered by damageable items when you \n"
-				+ "die, to a minimum of 1 durability remaining (items will \n"
-				+ "not be destroyed).");
-    	EntityLootableBody.corpseHP = config.getFloat("corpse_HP", "options", 50, 1,Short.MAX_VALUE,
+
+    	corpseHP = config.getFloat("corpse_HP", "options", 50, 1,Short.MAX_VALUE,
 				"The amount of damage a corpse can suffer before being \n"
 				+ "destroyed and releasing its items. \n"
 				+ "Note that 10 hearts = 20 HP.");
@@ -112,7 +113,7 @@ public class LootableBodies {
 				+ "The format is hours:minutes:seconds or just hours:minutes");
     	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
 
-		*/
+
 		config.save();
 		proxy.preInit(event);
     }

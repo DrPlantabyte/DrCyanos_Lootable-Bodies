@@ -111,7 +111,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 
 			float headPitch = 0;//entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTick;
 			this.renderLivingAt(entity, x, y, z);
-			float age = this.handleRotationFloat(entity, 0F);
+			float age = 0.0F;
 			this.rotateCorpse(entity, age, rotationInterpolation, partialTick);
 			float scale = this.prepareScale(entity, 0F);
 			float armSwingAmount = 0.0F;

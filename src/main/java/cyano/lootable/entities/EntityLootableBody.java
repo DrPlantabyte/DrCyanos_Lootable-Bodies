@@ -2,13 +2,23 @@ package cyano.lootable.entities;
 
 import com.mojang.authlib.GameProfile;
 import cyano.lootable.LootableBodies;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.EnumCreatureAttribute;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntitySkull;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.EnumHand;
+import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.FMLLog;
 import org.apache.commons.lang3.ObjectUtils;
@@ -18,8 +28,12 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static cyano.lootable.LootableBodies.corpseHP;
+
 public class EntityLootableBody extends EntityLiving implements IInventory{
 
+
+	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
 
 	final static byte VACUUM_TIMELIMIT = 20;
@@ -31,6 +45,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	private final AtomicReference<GameProfile> gpSwap = new AtomicReference<>(null) ; // for lazy-evaluation of player skins
 	private int terminate = -1;
+	private static final int DEATH_COUNTDOWN = 10;
 
 
 	public EntityLootableBody(World w) {
@@ -38,6 +53,9 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		log("Initializting");// TODO: remove
 		deathTimestamp = System.currentTimeMillis();
 		this.setAlwaysRenderNameTag(LootableBodies.displayNameTag);
+		this.setSize(0.85F, 0.75F);
+
+		this.isImmuneToFire = LootableBodies.
 	}
 
 
@@ -76,10 +94,24 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			getEntityWorld().removeEntity(this);
 		}
 		if(terminate < 0 && (super.getHealth() <= 0 || this.isDead)){
-			terminate = 10;
+			terminate = DEATH_COUNTDOWN;
 		}
+
+		// TODO: item vacuuming
 	}
 
+	@Override
+	protected void damageEntity(DamageSource src, float amount){
+		// TODO: damage management and wall escape
+		EntityVillager h;
+	}
+
+	@Override
+	public boolean processInteract(EntityPlayer player, EnumHand hand, ItemStack item){
+		log("Interaction");// TODO: remove
+		// TODO: show GUI
+		return false;
+	}
 
 	public GameProfile getGameProfile(){
 		super.onUpdate();
@@ -102,6 +134,150 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 
+	@Override
+	protected void applyEntityAttributes() {
+		// called during constructor of EntityLivingBase
+		super.applyEntityAttributes();
+		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(corpseHP);
+	}
+
+	public float getRotation(){
+		return this.rotationYaw;
+	}
+
+	public void setRotation(float newRot){
+		this.rotationYaw = newRot;
+		this.renderYawOffset = this.rotationYaw;
+		this.prevRenderYawOffset = this.rotationYaw;
+		this.prevRotationYaw = this.rotationYaw;
+		this.setRotationYawHead(this.rotationYaw);
+	}
+
+
+	@Override
+	protected boolean canDespawn() {
+		return false;
+	}
+
+	public void jumpOutOfWall(){
+		BlockPos currentCoord = new BlockPos(this.posX, this.posY, this.posZ);
+		// first try going out to the nearest adjacent block
+		double[] vector = new double[3];
+		vector[0] = currentCoord.getX()+0.5 - this.posX;
+		vector[1] = 0;
+		vector[2] = currentCoord.getZ()+0.5 - this.posZ;
+		double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+		vector[0] *= normalizer;
+		vector[1] *= normalizer;
+		vector[2] *= normalizer;
+		IBlockState bs = worldObj.getBlockState(new BlockPos(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]));
+		if(!(bs.getMaterial().blocksMovement())){
+			this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+			return;
+		}
+
+		// then try finding an open space in all adjacent blocks
+		BlockPos n;
+		n = currentCoord.up();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		n = currentCoord.north();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		n = currentCoord.east();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		n = currentCoord.south();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		n = currentCoord.west();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		n = currentCoord.down();
+		if(!(worldObj.getBlockState(n).getMaterial().blocksMovement())){
+			this.setPosition(n.getX()+0.5,n.getY()+0.015625, n.getZ()+0.5);
+			return;
+		}
+		// then if the above fails, move 2 blocks in a random direction
+		vector[0] = worldObj.rand.nextDouble() * 2;
+		vector[1] = worldObj.rand.nextDouble() * 2;
+		vector[2] = worldObj.rand.nextDouble() * 2;
+		this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+	}
+
+
+
+	@Override
+	protected void kill() {
+		terminate = DEATH_COUNTDOWN;
+		this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+		this.markDirty();
+	}
+
+
+	@Override
+	public int getTalkInterval() {
+		return 1200;
+	}
+	@Override
+	public void playLivingSound() {
+		// do nothing
+	}
+
+
+
+	@Override
+	protected int getExperiencePoints(final EntityPlayer p_getExperiencePoints_1_) {
+		return 0;
+	}
+
+
+	@Override
+	protected SoundEvent getAmbientSound() {
+		return null;
+	}
+
+	@Override
+	protected Item getDropItem() {
+		return null;
+	}
+
+	@Override
+	public boolean canBeSteered() {
+		return false;
+	}
+
+
+	@Override
+	public boolean canBeLeashedTo(EntityPlayer player) {
+		return false; // leashing not allowed
+	}
+
+
+	@Override
+	public boolean canPickUpLoot() {
+		return false; // picking up items done in special way
+	}
+
+	@Override
+	public void setCanPickUpLoot(final boolean p_setCanPickUpLoot_1_) {
+		// do nothing
+	}
+
+
+	@Override public boolean canBreatheUnderwater() {
+		return true;
+	}
 
 	////////// IInventory //////////
 	/**
@@ -224,7 +400,13 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	////////// End of IInventory //////////
 
-	// TODO: Rewriting from scratch
+
+	@Override
+	public EnumCreatureAttribute getCreatureAttribute()
+	{
+		return EnumCreatureAttribute.UNDEAD;
+	}
+
 
 	@Override
 	public void writeEntityToNBT(final NBTTagCompound root) {
