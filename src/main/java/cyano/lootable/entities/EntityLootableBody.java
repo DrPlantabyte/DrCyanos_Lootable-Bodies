@@ -3,12 +3,13 @@ package cyano.lootable.entities;
 import com.mojang.authlib.GameProfile;
 import cyano.lootable.LootableBodies;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.SoundEvents;
+import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -17,12 +18,15 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntitySkull;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.FMLLog;
+import net.minecraftforge.fml.common.network.internal.FMLNetworkHandler;
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -35,10 +39,12 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
+	public static final EntityEquipmentSlot[] EQUIPMENT_SLOTS = new EntityEquipmentSlot[] {EntityEquipmentSlot.HEAD, EntityEquipmentSlot.CHEST, EntityEquipmentSlot.LEGS, EntityEquipmentSlot.FEET, EntityEquipmentSlot.MAINHAND, EntityEquipmentSlot.OFFHAND};
 
 	final static byte VACUUM_TIMELIMIT = 20;
 	final static int VACUUM_RADIUS = 3;
 
+	private final ItemStack[] mainInventory = new ItemStack[6*7];
 	private final Deque<ItemStack> auxInventory = new LinkedList<>();
 	private byte vacuumTime = 0;
 	private long deathTimestamp;
@@ -56,7 +62,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		this.setAlwaysRenderNameTag(LootableBodies.displayNameTag);
 		this.setSize(0.85F, 0.75F);
 
-		this.isImmuneToFire = LootableBodies.
+		this.isImmuneToFire = LootableBodies.completelyInvulnerable || (!LootableBodies.hurtByEnvironment);
 	}
 
 
@@ -98,6 +104,15 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			terminate = DEATH_COUNTDOWN;
 		}
 
+		if(!auxInventory.isEmpty()) {
+			for (int slot = this.getSizeInventory() - 1; slot >= EQUIPMENT_SLOTS.length; slot--) {
+				if(this.getStackInSlot(slot) == null){
+					this.setInventorySlotContents(slot,auxInventory.pollFirst());
+					this.markDirty();
+					break;
+				}
+			}
+		}
 		// TODO: item vacuuming
 	}
 
@@ -107,12 +122,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		EntityVillager h;
 	}
 
-	@Override
-	public boolean processInteract(EntityPlayer player, EnumHand hand, ItemStack item){
-		log("Interaction");// TODO: remove
-		// TODO: show GUI
-		return false;
-	}
 
 	public GameProfile getGameProfile(){
 		super.onUpdate();
@@ -286,7 +295,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public int getSizeInventory() {
-		return 0; // TODO: implementation
+		return EQUIPMENT_SLOTS.length + mainInventory.length;
 	}
 
 	/**
@@ -296,28 +305,11 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public ItemStack getStackInSlot(int index) {
-		return null; // TODO: implementation
-	}
-
-	/**
-	 * Removes up to a specified number of items from an inventory slot and returns them in a new stack.
-	 *
-	 * @param index
-	 * @param count
-	 */
-	@Override
-	public ItemStack decrStackSize(int index, int count) {
-		return null; // TODO: implementation
-	}
-
-	/**
-	 * Removes a stack from the given slot and returns it.
-	 *
-	 * @param index
-	 */
-	@Override
-	public ItemStack removeStackFromSlot(int index) {
-		return null; // TODO: implementation
+		if(index < EQUIPMENT_SLOTS.length){
+			return super.getItemStackFromSlot(EQUIPMENT_SLOTS[index]);
+		} else {
+			return mainInventory[index - EQUIPMENT_SLOTS.length];
+		}
 	}
 
 	/**
@@ -328,7 +320,40 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public void setInventorySlotContents(int index, ItemStack stack) {
-		// TODO: implementation
+		if(index < EQUIPMENT_SLOTS.length){
+			super.setItemStackToSlot(EQUIPMENT_SLOTS[index], stack);
+		} else {
+			mainInventory[index - EQUIPMENT_SLOTS.length] = stack;
+		}
+	}
+
+	/**
+	 * Removes a stack from the given slot and returns it.
+	 *
+	 * @param index
+	 */
+	@Override
+	public ItemStack removeStackFromSlot(int index) {
+		ItemStack i = this.getStackInSlot(index);
+		this.setInventorySlotContents(index,null);
+		return i;
+	}
+
+	/**
+	 * Removes up to a specified number of items from an inventory slot and returns them in a new stack.
+	 *
+	 * @param index
+	 * @param count
+	 */
+	@Override
+	public ItemStack decrStackSize(int index, int count) {
+		ItemStack i = this.getStackInSlot(index);
+		ItemStack result = i.splitStack(count);
+		if (i.stackSize <= 0) {
+			i = null;
+		}
+		this.setInventorySlotContents(index, i);
+		return result;
 	}
 
 	/**
@@ -336,7 +361,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public int getInventoryStackLimit() {
-		return 0; // TODO: implementation
+		return 64;
 	}
 
 	/**
@@ -345,7 +370,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public void markDirty() {
-		// TODO: implementation
+		// do nothing
 	}
 
 	/**
@@ -355,17 +380,31 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public boolean isUseableByPlayer(EntityPlayer player) {
-		return false; // TODO: implementation
+		return true;
+	}
+
+	@Override
+	public boolean processInteract(EntityPlayer player, EnumHand hand, ItemStack item){
+		log("Interaction");// TODO: remove
+		if(player.getPosition().distanceSq(this.getPosition()) < 25) {
+			log("Sending GUI request");// TODO: remove
+			FMLNetworkHandler.openGui(player, LootableBodies.getInstance(), 0, getEntityWorld(), this.getEntityId(), 0, 0);
+			return true;
+		}
+		return false;
 	}
 
 	@Override
 	public void openInventory(EntityPlayer player) {
-		// TODO: implementation
+		log("opening");// TODO: remove
+		this.getEntityWorld().playSound(player,posX,posY,posZ, SoundEvents.entity_horse_saddle, SoundCategory.PLAYERS,1F,1F);
 	}
 
 	@Override
 	public void closeInventory(EntityPlayer player) {
-		// TODO: implementation
+		//
+		log("closing");// TODO: remove
+		this.getEntityWorld().playSound(player,posX,posY,posZ, SoundEvents.entity_horse_saddle, SoundCategory.PLAYERS,1F,1F);
 	}
 
 	/**
@@ -376,27 +415,35 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	 */
 	@Override
 	public boolean isItemValidForSlot(int index, ItemStack stack) {
-		return false; // TODO: implementation
+		if(index < 4){
+			return stack.getItem().isValidArmor (stack, EQUIPMENT_SLOTS[index], this);
+		} else {
+			return true;
+		}
 	}
 
 	@Override
 	public int getField(int id) {
-		return 0; // TODO: implementation
+		return 0;
 	}
 
 	@Override
 	public void setField(int id, int value) {
-		// TODO: implementation
+		// do nothing
 	}
 
 	@Override
 	public int getFieldCount() {
-		return 0; // TODO: implementation
+		return 0;
 	}
 
 	@Override
 	public void clear() {
-		// TODO: implementation
+		for(int i = 0; i < EQUIPMENT_SLOTS.length; i++){
+			this.setInventorySlotContents(i,null);
+		}
+		Arrays.fill(mainInventory,null);
+		auxInventory.clear();
 	}
 
 	////////// End of IInventory //////////

@@ -3,6 +3,7 @@ package cyano.lootable;
 
 import cyano.lootable.entities.EntityLootableBody;
 import cyano.lootable.events.PlayerDeathEventHandler;
+import cyano.lootable.graphics.GUIHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.fml.common.Mod;
@@ -11,6 +12,7 @@ import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
 
 @Mod(modid = LootableBodies.MODID, name=LootableBodies.NAME, version = LootableBodies.VERSION)
@@ -27,6 +29,7 @@ public class LootableBodies {
 	public static boolean hurtByEnvironment = false;
 	public static boolean hurtByAttacks = false;
 	public static boolean hurtByOther = false;
+	public static boolean hurtByMisc = false;
 	public static boolean completelyInvulnerable = false;
 	public static float corpseHP = 20;
     
@@ -48,7 +51,8 @@ public class LootableBodies {
     	config.load();
     	
     	boolean invulnderable = true;
-
+		// TODO: config
+/*
     	corpseHP = config.getFloat("corpse_HP", "options", 50, 1,Short.MAX_VALUE,
 				"The amount of damage a corpse can suffer before being \n"
 				+ "destroyed and releasing its items. \n"
@@ -114,7 +118,7 @@ public class LootableBodies {
 				+ "enable_corpse_decay option is set to true). \n"
 				+ "The format is hours:minutes:seconds or just hours:minutes");
     	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
-
+*/
 
 		config.save();
 		proxy.preInit(event);
@@ -138,6 +142,7 @@ public class LootableBodies {
 		
 		registerEntity(EntityLootableBody.class);
 		MinecraftForge.EVENT_BUS.register(new PlayerDeathEventHandler());
+		NetworkRegistry.INSTANCE.registerGuiHandler( LootableBodies.getInstance(), GUIHandler.getInstance());
  		
 		proxy.init(event);
 		
@@ -146,7 +151,7 @@ public class LootableBodies {
 	private int entityIndex = 0;
 	private void registerEntity(Class entityClass){
 		String idName = "Corpse";
- 		EntityRegistry.registerModEntity(entityClass, idName, entityIndex++/*mod-specific entity id*/, this, 64/*trackingRange*/, 10/*updateFrequency*/, true/*sendsVelocityUpdates*/);
+ 		EntityRegistry.registerModEntity(entityClass, idName, entityIndex++/*mod-specific entity id*/, this, 32/*trackingRange*/, 1/*updateFrequency*/, true/*sendsVelocityUpdates*/);
  		
 	}
     

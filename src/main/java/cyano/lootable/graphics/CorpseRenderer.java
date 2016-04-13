@@ -75,10 +75,11 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	public void doRender(EntityLootableBody entity, double x, double y, double z, float yaw, float partialTick) {
 		if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Pre<EntityLootableBody>(entity, this, x, y, z)))
 			return;
+
+		// TODO: pose arms and legs
 		GlStateManager.pushMatrix();
 		GlStateManager.disableCull();
 		this.mainModel.swingProgress = 0;
-		// TODO: figure out how to make the player model stop moving its arms
 		boolean shouldSit = entity.isRiding() && (entity.getRidingEntity() != null && entity.getRidingEntity().shouldRiderSit());
 		this.mainModel.isRiding = shouldSit;
 		this.mainModel.isChild = entity.isChild();
@@ -178,7 +179,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	{
 		super.renderLivingAt(e,x,y,z); // translation
 		GlStateManager.rotate(90,1F,0F,0F); // face-down
-		GlStateManager.translate((float)0, (float)-0.85, (float)0); // center
+		GlStateManager.translate(0F, -0.85F, -0.125F); // center
 	}
 
 }
