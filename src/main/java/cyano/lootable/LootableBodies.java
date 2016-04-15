@@ -24,7 +24,7 @@ public class LootableBodies {
 
 	public static boolean displayNameTag = true;
     public static boolean addBonesToCorpse = true;
-    public static boolean pileOfBones = false; // TODO: non-biped model of a skull
+    public static boolean pileOfBones = false; // skeleton model
 	public static long ticksPerItemDecay = 10 * 60 * 20; // -1 to disable
 	public static boolean hurtByEnvironment = false;
 	public static boolean hurtByAttacks = false;
@@ -34,7 +34,7 @@ public class LootableBodies {
     
     public static boolean allowCorpseDecay = true;
     public static boolean decayOnlyWhenEmpty = true;
-    public static long corpseDecayTime = 3600*20;
+    public static long corpseDecayTime = 3600*20; // in game ticks
     
     @SidedProxy(clientSide="cyano.lootable.ClientProxy", serverSide="cyano.lootable.ServerProxy")
     public static Proxy proxy;
@@ -48,65 +48,40 @@ public class LootableBodies {
     	// load config
     	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
     	config.load();
-    	
-    	boolean invulnderable = true;
-		// TODO: config
-/*
+
     	corpseHP = config.getFloat("corpse_HP", "options", 50, 1,Short.MAX_VALUE,
 				"The amount of damage a corpse can suffer before being \n"
 				+ "destroyed and releasing its items. \n"
 				+ "Note that 10 hearts = 20 HP.");
-    	fancyCorpses = config.getBoolean("use_player_skin", "options", true,
-				"If true, corpses will have the skins of the player who \n"
-				+ "died. If false, then skeletons will be used instead.");
+		pileOfBones = config.getBoolean("use_skeleton", "options", pileOfBones,
+				"If false, corpses will have the skins of the player who \n"
+				+ "died. If true, then skeletons will be used instead.");
     	displayNameTag = config.getBoolean("display_nametag", "options", displayNameTag,
 				"If true, corpses will show their owner's name");
     	
-	addBonesToCorpse = config.getBoolean("add_bones_to_corpse", "options", true,
+		addBonesToCorpse = config.getBoolean("add_bones_to_corpse", "options", addBonesToCorpse,
 			"If true, corpses will have bones and rotten flesh added to them.");
 
-    	corpseAuxilleryInventorySize = Math.max(
-    			config.getInt("corpse_inventory_size", "options", 
-    					corpseAuxilleryInventorySize + EntityLootableBody.INVENTORY_SIZE, 
-    					EntityLootableBody.INVENTORY_SIZE,Short.MAX_VALUE/2,
-    					"The maximum number of items that can be stored in a \n"
-    					+ "corpse. Note that only 54 can be seen at a time")
-    			- EntityLootableBody.INVENTORY_SIZE,0);
 
-    	EntityLootableBody.hurtByAll = config.getBoolean("hurt_by_all", "corpse damage", false,
-				"If true, corpses will be damaged by anything that damages a player.");
-    	EntityLootableBody.hurtByFire = config.getBoolean("hurt_by_fire", "corpse damage", false,
-				"If true, corpses will be damaged by fire and lava.");
-    	EntityLootableBody.hurtByBlast = config.getBoolean("hurt_by_explosions", "corpse damage", false,
-				"If true, corpses will be damaged by creepers and TNT. \n"
-				+ "If you don't want bodies to be destroyed by explosions, \n"
-				+ "also disable fall damage.");
-    	EntityLootableBody.hurtByFall = config.getBoolean("hurt_by_fall", "corpse damage", false,
-				"If true, corpses will be damaged by falling long distances.");
-    	EntityLootableBody.hurtByCactus = config.getBoolean("hurt_by_cactus", "corpse damage", false,
-				"If true, corpses will be damaged by cacti.");
-    	EntityLootableBody.hurtByWeapons = config.getBoolean("hurt_by_weapons", "corpse damage", false,
-				"If true, corpses will be damaged by attacking it.");
-    	EntityLootableBody.hurtByBlockSuffocation = config.getBoolean("hurt_by_block_suffocation", "corpse damage", false,
-				"If true, corpses will be damaged by being stuck inside a block.");
-    	EntityLootableBody.hurtByOther = config.getBoolean("hurt_by_other", "corpse damage", false,
+    	hurtByEnvironment = config.getBoolean("hurt_by_environment", "corpse damage", hurtByEnvironment,
+				"If true, corpses will be damaged by fire, lava, falling, and other such hazards.");
+		hurtByAttacks = config.getBoolean("hurt_by_weapons", "corpse damage", hurtByAttacks,
+				"If true, corpses can be damaged by attacking them.");
+		hurtByMisc = config.getBoolean("hurt_by_misc", "corpse damage", hurtByMisc,
 				"If true, corpses will be damaged by damage sources not covered by the other options in this section.");
+
+
+		completelyInvulnerable = !or(hurtByEnvironment,hurtByAttacks,hurtByMisc);
+
+		ticksPerItemDecay = (int)(60 * 20 * config.getFloat("item_decay_rate", "options", 5F, -1F, 1e9F,
+				"All damageable items on the corpse will suffer 1 durability damage \n"
+				+ "for every X number of minutes (default is 5 minutes) that they are. \n"
+				+ "Items damaged in this way will never be completely destroyed. \n"
+				+ "Set to 0 (or negative) to disable."));
     	
-    	
-    	EntityLootableBody.invulnerable = !or(
-    			EntityLootableBody.hurtByAll, 
-    			EntityLootableBody.hurtByBlast, 
-    			EntityLootableBody.hurtByBlockSuffocation, 
-    			EntityLootableBody.hurtByCactus, 
-    			EntityLootableBody.hurtByFall, 
-    			EntityLootableBody.hurtByFire, 
-    			EntityLootableBody.hurtByOther, 
-    			EntityLootableBody.hurtByWeapons);
-    	
-    	
-    	allowCorpseDecay = config.getBoolean("enable_corpse_decay", "corpse decay", false,
+    	allowCorpseDecay = config.getBoolean("enable_corpse_decay", "corpse decay", allowCorpseDecay,
 				"If true, corpses will self-destruct after a period of time.");
-    	decayOnlyWhenEmpty = config.getBoolean("empty_only_decay", "corpse decay", false,
+    	decayOnlyWhenEmpty = config.getBoolean("empty_only_decay", "corpse decay", decayOnlyWhenEmpty,
 				"If true and enable_corpse_decay is also true, corpses will \n"
 				+ "self-destruct after being empty for a period of time (will \n"
 				+ "not decay if there are any items on the corpse). If using this \n"
@@ -117,7 +92,6 @@ public class LootableBodies {
 				+ "enable_corpse_decay option is set to true). \n"
 				+ "The format is hours:minutes:seconds or just hours:minutes");
     	corpseDecayTime = Math.max(parseTimeInSeconds(decayTime),2)*20; // 2 second minimum
-*/
 
 		config.save();
 		proxy.preInit(event);

@@ -1,29 +1,19 @@
 package cyano.lootable.graphics;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.ModelPlayer;
+import net.minecraft.client.model.ModelSkeleton;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RenderLivingBase;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.entity.RenderPigZombie;
-import net.minecraft.client.renderer.entity.RenderPlayer;
-import net.minecraft.client.renderer.entity.layers.LayerArrow;
 import net.minecraft.client.renderer.entity.layers.LayerBipedArmor;
-import net.minecraft.client.renderer.entity.layers.LayerCustomHead;
 import net.minecraft.client.renderer.entity.layers.LayerHeldItem;
-import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Level;
-
-import java.util.Map;
 
 /**
  * Created by Chris on 4/10/2016.
@@ -31,36 +21,25 @@ import java.util.Map;
 
 
 @SideOnly(Side.CLIENT)
-public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
+public class SkeletonRenderer extends RenderLivingBase<EntityLootableBody> {
 
-	protected final ModelPlayer thickArmsModel;
-	protected final ModelPlayer thinArmsModel;
+	private static final ResourceLocation skeletonTexture = new ResourceLocation("textures/entity/skeleton/skeleton.png");
 
-	public CorpseRenderer(RenderManager renderManagerIn) {
-		super(renderManagerIn,  new ModelPlayer(0.0F, true), 0.5F);
-		thinArmsModel = (ModelPlayer)this.mainModel;
-		thickArmsModel =  new ModelPlayer(0.0F, false);
+	public SkeletonRenderer(RenderManager renderManagerIn) {
+		super(renderManagerIn,  new ModelSkeleton(), 0.5F);
 		//
-		this.addLayer(new LayerBipedArmor(this));
 		this.addLayer(new LayerHeldItem(this));
-		this.addLayer(new LayerArrow(this));
-		this.addLayer(new LayerCustomHead(this.getMainModel().bipedHead));
-		RenderPlayer k;
-		RenderPigZombie j;
+		this.addLayer(new LayerBipedArmor(this)
+		{
+			protected void initArmor()
+			{
+				this.modelLeggings = new ModelSkeleton(0.5F, true);
+				this.modelArmor = new ModelSkeleton(1.0F, true);
+			}
+		});
 	}
 
-	public ModelPlayer getMainModel()
-	{
-		return (ModelPlayer)super.getMainModel();
-	}
 
-	public void setModel(boolean thinArms){
-		if(thinArms){
-			this.mainModel = this.thinArmsModel;
-		} else {
-			this.mainModel = this.thickArmsModel;
-		}
-	}
 	/**
 	 * Returns the location of an entity's texture. Doesn't seem to be called unless you call Render.bindEntityTexture.
 	 *
@@ -68,25 +47,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	 */
 	@Override
 	protected ResourceLocation getEntityTexture(EntityLootableBody entity) {
-
-
-		GameProfile profile = entity.getGameProfile();
-		if (profile != null && profile.getId() != null) {
-			return getSkin(profile);
-		}
-
-		return DefaultPlayerSkin.getDefaultSkinLegacy();
-	}
-
-	public static ResourceLocation getSkin(GameProfile profile) {
-		final Minecraft minecraft = Minecraft.getMinecraft();
-		final Map loadSkinFromCache = minecraft.getSkinManager().loadSkinFromCache(profile); // returned map may or may not be typed
-		if (loadSkinFromCache.containsKey(MinecraftProfileTexture.Type.SKIN)) {
-			ResourceLocation skin = minecraft.getSkinManager().loadSkin((MinecraftProfileTexture) loadSkinFromCache.get(MinecraftProfileTexture.Type.SKIN), MinecraftProfileTexture.Type.SKIN);
-			return skin;
-		} else {
-			return DefaultPlayerSkin.getDefaultSkin(profile.getId());
-		}
+		return skeletonTexture;
 	}
 
 
@@ -94,8 +55,6 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	public void doRender(EntityLootableBody entity, double x, double y, double z, float yaw, float partialTick) {
 		if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Pre<EntityLootableBody>(entity, this, x, y, z)))
 			return;
-
-		this.setModel(entity.useThinArms());
 
 		// render the model
 		GlStateManager.pushMatrix();
@@ -175,7 +134,6 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 
 		net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Post<EntityLootableBody>(entity, this, x, y, z));
 
-		this.setModel(true);
 	}
 
 

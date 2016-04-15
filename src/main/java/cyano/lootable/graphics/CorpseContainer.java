@@ -53,11 +53,7 @@ public class CorpseContainer extends net.minecraft.inventory.Container {
 				@SideOnly(Side.CLIENT)
 				public String getSlotTexture()
 				{
-					if(EQUIPMENT_SLOTS[i] == EntityEquipmentSlot.OFFHAND) {
-						return "minecraft:items/empty_armor_slot_shield";
-					} else {
-						return super.getSlotTexture();
-					}
+					return "minecraft:items/empty_armor_slot_shield";
 				}
 			});
 			index++;

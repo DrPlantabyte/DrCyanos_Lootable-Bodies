@@ -12,6 +12,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemSpade;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -30,12 +31,9 @@ import org.apache.commons.lang3.ObjectUtils;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static cyano.lootable.LootableBodies.corpseHP;
 
 public class EntityLootableBody extends EntityLiving implements IInventory{
 
-
-	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
 	public static final EntityEquipmentSlot[] EQUIPMENT_SLOTS = new EntityEquipmentSlot[] {EntityEquipmentSlot.HEAD, EntityEquipmentSlot.CHEST, EntityEquipmentSlot.LEGS, EntityEquipmentSlot.FEET, EntityEquipmentSlot.MAINHAND, EntityEquipmentSlot.OFFHAND};
 
@@ -52,11 +50,12 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private int terminate = -1;
 	private static final int DEATH_COUNTDOWN = 10;
 
+	 // TODO: shovel kill
 
 	public EntityLootableBody(World w) {
 		super(w);
-		log("Initializting");// TODO: remove
-		deathTimestamp = System.currentTimeMillis();
+		deathTimestamp = w.getTotalWorldTime();
+		decayTimestamp = deathTimestamp;
 		this.setAlwaysRenderNameTag(LootableBodies.displayNameTag);
 		this.setSize(0.85F, 0.75F);
 
@@ -82,13 +81,30 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	@Override
 	public void onEntityUpdate(){
 		super.onEntityUpdate();
+
+		if(terminate >= 0){
+			// in death mode
+			if(terminate == DEATH_COUNTDOWN) dropAllItems();
+			// handle self-removal from entity list in world
+			if(terminate > 0) terminate--;
+			if(terminate == 0){
+				// needs to be manually deleted for some reason
+				getEntityWorld().removeEntity(this);
+			}
+			return;
+		}
+		if(terminate < 0 && (super.getHealth() <= 0 || this.isDead)){
+			terminate = DEATH_COUNTDOWN;
+		}
+
+		// handle corpse name (and therefore appearance)
 		String nameUpdate = this.getCustomNameTag();
 		if(ObjectUtils.notEqual(oldName,nameUpdate)){
 			oldName = nameUpdate;
 			log("generating game profile from %s",nameUpdate);// TODO: remove
 			if(nameUpdate != null && nameUpdate.trim().length() > 0) {
 				GameProfile gp = new GameProfile(null, nameUpdate);
-				if(this.getEntityWorld().isRemote) gp = TileEntitySkull.updateGameprofile(gp);
+				if((!LootableBodies.pileOfBones) && this.getEntityWorld().isRemote) gp = TileEntitySkull.updateGameprofile(gp);
 				setGameProfile(gp);
 				super.setCustomNameTag(nameUpdate);
 			} else {
@@ -97,16 +113,29 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			}
 		}
 
-		if(terminate > 0) terminate--;
-		if(terminate == 0){
-			// needs to be manually deleted for some reason
-			this.dropEquipment(true, 0);
-			getEntityWorld().removeEntity(this);
-		}
-		if(terminate < 0 && (super.getHealth() <= 0 || this.isDead)){
-			terminate = DEATH_COUNTDOWN;
+		// handle decay time
+		final long currentTime = getEntityWorld().getTotalWorldTime();
+		if(LootableBodies.allowCorpseDecay){
+			if(LootableBodies.decayOnlyWhenEmpty && isEmpty() == false){
+				deathTimestamp = currentTime;
+			}
+			long age = currentTime - deathTimestamp;
+			if(age > LootableBodies.corpseDecayTime){
+				this.kill();
+			}
 		}
 
+		// handle item decay
+		if(LootableBodies.ticksPerItemDecay > 0){
+			long age = currentTime - decayTimestamp;
+			if(age > LootableBodies.ticksPerItemDecay){
+				decayTimestamp = currentTime;
+				decayItems();
+			}
+		}
+
+
+		// move items from buffer to main inventory
 		if(!auxInventory.isEmpty()) {
 			for (int slot = this.getSizeInventory() - 1; slot >= EQUIPMENT_SLOTS.length; slot--) {
 				if(this.getStackInSlot(slot) == null){
@@ -116,6 +145,8 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 				}
 			}
 		}
+
+		// handle item vacuuming
 		if(++vacuumTime < VACUUM_TIMELIMIT){
 			List<EntityItem> items = getEntityWorld().getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(
 					posX - VACUUM_RADIUS, posY - VACUUM_RADIUS, posZ - VACUUM_RADIUS,
@@ -129,7 +160,25 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			}
 		}
 
-		// TODO: item decay
+	}
+
+	private void decayItems(int amount) {
+		for(int slot = 0; slot < this.getSizeInventory(); slot++){
+			this.setInventorySlotContents(slot,this.decayItem(this.getStackInSlot(slot), amount));
+		}
+		for(ItemStack item : auxInventory){
+			decayItem(item, amount);
+		}
+	}
+
+	private ItemStack decayItem(ItemStack item, int amount) {
+		if(item.stackSize == 1 && item.isItemStackDamageable() && item.getItem().isDamageable()){
+			int durabilityRemaining = item.getMaxDamage() - item.getItemDamage() - 1;
+			if(durabilityRemaining > 0){
+				item.damageItem(Math.min(durabilityRemaining,amount),this);
+			}
+		}
+		return item;
 	}
 
 	public void addItem(ItemStack stack) {
@@ -152,7 +201,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	public ItemStack mergeItem(int slot, ItemStack stack) {
 		if(stack == null) return null;
 		ItemStack current = this.getStackInSlot(slot);
-		final int inventorySizeLimit = Math.min(current.getMaxStackSize(),this.getInventoryStackLimit());
+		final int inventorySizeLimit = Math.min(stack.getMaxStackSize(),this.getInventoryStackLimit());
 		if(current == null){
 			this.setInventorySlotContents(slot, stack);
 			return null;
@@ -174,7 +223,19 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	protected void damageEntity(DamageSource src, float amount){
 		log("%s damage from %s",amount, src.getDamageType());// TODO: remove
 		String type = String.valueOf(src == null ? null : src.getDamageType()); // null protection
-		if(type.equals(DamageSource.outOfWorld.getDamageType())) super.damageEntity(src,amount); // kill command and falling out of the world
+		if(src instanceof EntityDamageSource && src.getEntity() instanceof EntityPlayer){
+			log("checking for shovel hit");// TODO: remove
+			EntityPlayer player = (EntityPlayer)src.getEntity();
+			ItemStack item = player.getHeldItem(EnumHand.MAIN_HAND);
+			if(item.getItem() instanceof ItemSpade || item.getItem().getToolClasses(item).contains("shovel")){
+				this.kill();
+				log("%s is a shovel",item);// TODO: remove
+			}
+		}
+		if(type.equals(DamageSource.outOfWorld.getDamageType())) {
+			super.damageEntity(src,amount); // kill command and falling out of the world
+			return;
+		}
 
 		if(type.equals(DamageSource.inWall.getDamageType())){
 			this.jumpOutOfWall();
@@ -202,19 +263,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 
-	@Override
-	public void onDeath(DamageSource cause){
-		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
-			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,
-					this.getItemStackFromSlot(e)));
-		}for(ItemStack i : mainInventory){
-			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
-		}for(ItemStack i : auxInventory){
-			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
-		}
-		this.clear();
-		super.onDeath(cause);
-	}
 
 	public GameProfile getGameProfile(){
 		return gpSwap.get();
@@ -241,7 +289,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	protected void applyEntityAttributes() {
 		// called during constructor of EntityLivingBase
 		super.applyEntityAttributes();
-		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(corpseHP);
+		this.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(LootableBodies.corpseHP);
 	}
 
 	public float getRotation(){
@@ -323,7 +371,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	@Override
 	protected void kill() {
 		terminate = DEATH_COUNTDOWN;
-		this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+		this.attackEntityFrom(DamageSource.outOfWorld, this.getMaxHealth());
 		this.markDirty();
 	}
 
@@ -542,6 +590,20 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			if(this.getStackInSlot(slot) != null) return false;
 		}
 		return true;
+	}
+
+	private void dropAllItems(){
+		log("Dropping inventory"); // TODO: remove
+		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
+			ItemStack i = this.getItemStackFromSlot(e);
+			if(i != null)this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,
+					i));
+		}for(ItemStack i : mainInventory){
+			if(i != null)this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
+		}for(ItemStack i : auxInventory){
+			if(i != null)this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
+		}
+		this.clear();
 	}
 
 	private static boolean matchesAny(String damageType, DamageSource... list){
