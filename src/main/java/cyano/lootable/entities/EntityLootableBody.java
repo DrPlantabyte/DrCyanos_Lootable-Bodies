@@ -26,10 +26,7 @@ import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.network.internal.FMLNetworkHandler;
 import org.apache.commons.lang3.ObjectUtils;
 
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static cyano.lootable.LootableBodies.corpseHP;
@@ -85,7 +82,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			log("generating game profile from %s",nameUpdate);// TODO: remove
 			if(nameUpdate != null && nameUpdate.trim().length() > 0) {
 				GameProfile gp = new GameProfile(null, nameUpdate);
-				gp = TileEntitySkull.updateGameprofile(gp);
+				if(this.getEntityWorld().isRemote) gp = TileEntitySkull.updateGameprofile(gp);
 				setGameProfile(gp);
 				super.setCustomNameTag(nameUpdate);
 			} else {
@@ -118,20 +115,23 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	@Override
 	protected void damageEntity(DamageSource src, float amount){
+		if(src.damageType.equals(DamageSource.outOfWorld)) super.damageEntity(src,amount); // kill command and falling out of the world
 		// TODO: damage management and wall escape
+		log("%s damage from %s",amount, src.damageType);// TODO: remove
 		EntityVillager h;
+		super.damageEntity(src,amount);
 	}
 
 
 	public GameProfile getGameProfile(){
-		super.onUpdate();
 		return gpSwap.get();
 	}
+
 	public void setGameProfile(GameProfile gp){
 		gpSwap.set(gp);
 		log("Game profile set to %s", gp);// TODO: remove
 	}
-	public void setGameProfileFromUserName(String name){
+	public void setUserName(String name){
 		this.setCustomNameTag(name);
 		log("Name change request %s", name);// TODO: remove
 	}
@@ -523,9 +523,18 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			this.rotationYaw = root.getFloat("Yaw");
 		}
 		if (root.hasKey("Name")) {
-			this.setGameProfileFromUserName(root.getString("Name"));
+			this.setUserName(root.getString("Name"));
 		}
 		this.setRotation(this.rotationYaw, 0);
 	}
 
+	public boolean useThinArms() {
+		if(this.getGameProfile() != null){
+			UUID uid = this.getGameProfile().getId();
+			if(uid != null){
+				return (uid.hashCode() & 1) == 1;
+			}
+		}
+		return false;
+	}
 }
