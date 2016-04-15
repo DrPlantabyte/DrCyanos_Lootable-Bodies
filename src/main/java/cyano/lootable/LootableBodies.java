@@ -28,7 +28,6 @@ public class LootableBodies {
 	public static long ticksPerItemDecay = 10 * 60 * 20; // -1 to disable
 	public static boolean hurtByEnvironment = false;
 	public static boolean hurtByAttacks = false;
-	public static boolean hurtByOther = false;
 	public static boolean hurtByMisc = false;
 	public static boolean completelyInvulnerable = false;
 	public static float corpseHP = 20;

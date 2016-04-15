@@ -6,9 +6,9 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.passive.EntityVillager;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.SoundEvents;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
@@ -17,9 +17,10 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntitySkull;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.EntityDamageSource;
 import net.minecraft.util.EnumHand;
-import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.FMLLog;
@@ -45,7 +46,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private final Deque<ItemStack> auxInventory = new LinkedList<>();
 	private byte vacuumTime = 0;
 	private long deathTimestamp;
-	private boolean leftHanded = false; // TODO: handle handed-ness
+	private long decayTimestamp;
 
 	private final AtomicReference<GameProfile> gpSwap = new AtomicReference<>(null) ; // for lazy-evaluation of player skins
 	private int terminate = -1;
@@ -60,6 +61,11 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		this.setSize(0.85F, 0.75F);
 
 		this.isImmuneToFire = LootableBodies.completelyInvulnerable || (!LootableBodies.hurtByEnvironment);
+
+		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
+			super.setDropChance(e,1.0F);
+		}
+		super.setDropItemsWhenDead(true);
 	}
 
 
@@ -110,18 +116,105 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 				}
 			}
 		}
-		// TODO: item vacuuming
+		if(++vacuumTime < VACUUM_TIMELIMIT){
+			List<EntityItem> items = getEntityWorld().getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(
+					posX - VACUUM_RADIUS, posY - VACUUM_RADIUS, posZ - VACUUM_RADIUS,
+					posX + VACUUM_RADIUS, posY + VACUUM_RADIUS, posZ + VACUUM_RADIUS));
+			for(EntityItem item : items){
+				ItemStack stack = item.getEntityItem();
+				this.addItem(stack);
+			}
+			for(EntityItem item : items){
+				getEntityWorld().removeEntity(item);
+			}
+		}
+
+		// TODO: item decay
 	}
+
+	public void addItem(ItemStack stack) {
+		for(int slot = EQUIPMENT_SLOTS.length; slot < this.getSizeInventory(); slot++){
+			stack = mergeItem(slot,stack);
+			if(stack == null) return;
+		}
+		auxInventory.addLast(stack);
+	}
+
+
+	public void initializeItems(ItemStack[] inv) {
+
+		System.arraycopy(inv,0,mainInventory,0,Math.min(inv.length,mainInventory.length));
+		for(int i = mainInventory.length; i < inv.length; i++){
+			auxInventory.addLast(inv[i]);
+		}
+	}
+
+	public ItemStack mergeItem(int slot, ItemStack stack) {
+		if(stack == null) return null;
+		ItemStack current = this.getStackInSlot(slot);
+		final int inventorySizeLimit = Math.min(current.getMaxStackSize(),this.getInventoryStackLimit());
+		if(current == null){
+			this.setInventorySlotContents(slot, stack);
+			return null;
+		} else if(current.stackSize < inventorySizeLimit
+				&& ItemStack.areItemsEqual(stack,current)
+				&& ItemStack.areItemStackTagsEqual(stack,current)){
+			int delta = Math.min(stack.stackSize,inventorySizeLimit - current.stackSize);
+			current.stackSize += delta;
+			stack.stackSize -= delta;
+			this.setInventorySlotContents(slot,current);
+			if(stack.stackSize <= 0) return null;
+			return stack;
+		}
+		return stack;
+	}
+
 
 	@Override
 	protected void damageEntity(DamageSource src, float amount){
-		if(src.damageType.equals(DamageSource.outOfWorld)) super.damageEntity(src,amount); // kill command and falling out of the world
-		// TODO: damage management and wall escape
-		log("%s damage from %s",amount, src.damageType);// TODO: remove
-		EntityVillager h;
-		super.damageEntity(src,amount);
+		log("%s damage from %s",amount, src.getDamageType());// TODO: remove
+		String type = String.valueOf(src == null ? null : src.getDamageType()); // null protection
+		if(type.equals(DamageSource.outOfWorld.getDamageType())) super.damageEntity(src,amount); // kill command and falling out of the world
+
+		if(type.equals(DamageSource.inWall.getDamageType())){
+			this.jumpOutOfWall();
+		}
+
+		// damage handling
+		if(LootableBodies.completelyInvulnerable) return;
+
+		EntityZombie h;
+
+		if(src instanceof EntityDamageSource ){
+			if(LootableBodies.hurtByAttacks) super.damageEntity(src,amount);
+			return;
+		}
+
+		if(matchesAny(type, DamageSource.anvil, DamageSource.cactus, DamageSource.fall, DamageSource.fallingBlock, DamageSource.flyIntoWall, DamageSource.inFire, DamageSource.lava, DamageSource.magic, DamageSource.lightningBolt, DamageSource.onFire)){
+			if(LootableBodies.hurtByEnvironment)super.damageEntity(src,amount);
+			return;
+		}
+
+		if(LootableBodies.hurtByMisc){
+			super.damageEntity(src,amount);
+			return;
+		}
 	}
 
+
+	@Override
+	public void onDeath(DamageSource cause){
+		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
+			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,
+					this.getItemStackFromSlot(e)));
+		}for(ItemStack i : mainInventory){
+			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
+		}for(ItemStack i : auxInventory){
+			this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,i));
+		}
+		this.clear();
+		super.onDeath(cause);
+	}
 
 	public GameProfile getGameProfile(){
 		return gpSwap.get();
@@ -396,15 +489,10 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	@Override
 	public void openInventory(EntityPlayer player) {
-		log("opening");// TODO: remove
-		this.getEntityWorld().playSound(player,posX,posY,posZ, SoundEvents.entity_horse_saddle, SoundCategory.PLAYERS,1F,1F);
 	}
 
 	@Override
 	public void closeInventory(EntityPlayer player) {
-		//
-		log("closing");// TODO: remove
-		this.getEntityWorld().playSound(player,posX,posY,posZ, SoundEvents.entity_horse_saddle, SoundCategory.PLAYERS,1F,1F);
 	}
 
 	/**
@@ -448,6 +536,20 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	////////// End of IInventory //////////
 
+	public boolean isEmpty(){
+		if(!auxInventory.isEmpty()) return false;
+		for(int slot = 0; slot < this.getSizeInventory(); slot++){
+			if(this.getStackInSlot(slot) != null) return false;
+		}
+		return true;
+	}
+
+	private static boolean matchesAny(String damageType, DamageSource... list){
+		for(int i = 0; i < list.length; i++){
+			if(damageType.hashCode() == list[i].hashCode()) return true;
+		}
+		return false;
+	}
 
 	@Override
 	public EnumCreatureAttribute getCreatureAttribute()
