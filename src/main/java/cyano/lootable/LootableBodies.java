@@ -24,7 +24,7 @@ public class LootableBodies {
 
 	public static boolean displayNameTag = true;
     public static boolean addBonesToCorpse = true;
-    public static boolean pileOfBones = false; // skeleton model
+    public static boolean useLocalSkin = false;
 	public static long ticksPerItemDecay = 10 * 60 * 20; // -1 to disable
 	public static boolean hurtByEnvironment = false;
 	public static boolean hurtByAttacks = false;
@@ -49,13 +49,14 @@ public class LootableBodies {
     	Configuration config = new Configuration(event.getSuggestedConfigurationFile());
     	config.load();
 
-    	corpseHP = config.getFloat("corpse_HP", "options", 50, 1,Short.MAX_VALUE,
+    	corpseHP = config.getFloat("corpse_HP", "options", corpseHP, 1,Short.MAX_VALUE,
 				"The amount of damage a corpse can suffer before being \n"
 				+ "destroyed and releasing its items. \n"
 				+ "Note that 10 hearts = 20 HP.");
-		pileOfBones = config.getBoolean("use_skeleton", "options", pileOfBones,
+		useLocalSkin = config.getBoolean("local_texture", "options", useLocalSkin,
 				"If false, corpses will have the skins of the player who \n"
-				+ "died. If true, then skeletons will be used instead.");
+				+ "died. If true, then corpses will use the following texture \n."
+				+ "location: assets/"+MODID+"/textures/entity/corpse/corpse.png");
     	displayNameTag = config.getBoolean("display_nametag", "options", displayNameTag,
 				"If true, corpses will show their owner's name");
     	

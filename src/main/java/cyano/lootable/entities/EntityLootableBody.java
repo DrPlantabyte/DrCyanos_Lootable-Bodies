@@ -50,7 +50,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private int terminate = -1;
 	private static final int DEATH_COUNTDOWN = 10;
 
-	 // TODO: shovel kill
 
 	public EntityLootableBody(World w) {
 		super(w);
@@ -61,17 +60,11 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 		this.isImmuneToFire = LootableBodies.completelyInvulnerable || (!LootableBodies.hurtByEnvironment);
 
-		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
-			super.setDropChance(e,1.0F);
-		}
-		super.setDropItemsWhenDead(true);
 	}
 
 	public EntityLootableBody(EntityPlayer player){
 		this(player.getEntityWorld());
-		this.posX = player.posX;
-		this.posY = player.posY;
-		this.posZ = player.posZ;
+		this.setPosition(player.posX, player.posY+0.5,  player.posZ);
 
 		this.motionX = player.motionX;
 		this.motionY = player.motionY+0.0784000015258789;
@@ -80,6 +73,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		this.newPosX = posX;
 		//this.newPosY = posY; // no newPosY?
 		//this.newPosZ = posZ; // no newPosZ?
+		this.markDirty();
 	}
 
 
@@ -95,6 +89,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	private String oldName = null;
 	@Override
 	public void onEntityUpdate(){
+		//log("position=%s; terminate=%s; time=%s; age=%s; deathTimestamp=%s; decayTimestamp=%s; Health=%s; isDead=%s" ,getPosition(),terminate,getEntityWorld().getTotalWorldTime(),getEntityWorld().getTotalWorldTime() - deathTimestamp, deathTimestamp, decayTimestamp, getHealth(), isDead);
 		super.onEntityUpdate();
 		final boolean isClient = getEntityWorld().isRemote;
 		final boolean isServer = !isClient;
@@ -122,7 +117,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			log("generating game profile from %s",nameUpdate);// TODO: remove
 			if(nameUpdate != null && nameUpdate.trim().length() > 0) {
 				GameProfile gp = new GameProfile(null, nameUpdate);
-				if((!LootableBodies.pileOfBones) && isClient) gp = TileEntitySkull.updateGameprofile(gp);
+				if((!LootableBodies.useLocalSkin) && isClient) gp = TileEntitySkull.updateGameprofile(gp);
 				setGameProfile(gp);
 				this.setCustomNameTag(nameUpdate);
 			} else {
@@ -321,10 +316,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	public void setRotation(float newRot){
 		this.rotationYaw = newRot;
-		this.renderYawOffset = this.rotationYaw;
-		this.prevRenderYawOffset = this.rotationYaw;
-		this.prevRotationYaw = this.rotationYaw;
-		this.setRotationYawHead(this.rotationYaw);
 	}
 
 
@@ -712,9 +703,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		}
 		if(root.hasKey("DecayTime")){
 			this.decayTimestamp = root.getLong("DecayTime");
-		}
-		if (root.hasKey("Yaw")) {
-			this.rotationYaw = root.getFloat("Yaw");
 		}
 		if (root.hasKey("Name")) {
 			this.setUserName(root.getString("Name"));

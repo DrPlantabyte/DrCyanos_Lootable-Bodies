@@ -2,6 +2,7 @@ package cyano.lootable.events;
 
 import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
+import net.minecraft.command.server.CommandSummon;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -67,6 +68,8 @@ public class PlayerDeathEventHandler {
 			log("slot cache: %s ",cache);// TODO: remove
 
 			EntityLootableBody corpse = new EntityLootableBody(player);
+			corpse.forceSpawn = true;
+			CommandSummon k;
 			corpse.setUserName(player.getName());
 			log("player %s dropping loot at (%s d%s/dt, %s d%s/dt, %s d%s/dt)",player.getName(), player.posX, player.motionX, player.posY, player.motionY, player.posZ, player.motionZ);// TODO: remove
 			corpse.setRotation(player.rotationYaw);
@@ -88,6 +91,7 @@ public class PlayerDeathEventHandler {
 			}
 
 			w.spawnEntityInWorld(corpse);
+
 
 			e.getDrops().clear();
 		}

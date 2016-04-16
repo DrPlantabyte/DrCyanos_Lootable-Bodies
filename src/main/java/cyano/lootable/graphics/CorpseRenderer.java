@@ -33,6 +33,8 @@ import java.util.Map;
 @SideOnly(Side.CLIENT)
 public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 
+	private static final ResourceLocation localSkin = new ResourceLocation(LootableBodies.MODID+":textures/entity/corpse/corpse.png");
+
 	protected final ModelPlayer thickArmsModel;
 	protected final ModelPlayer thinArmsModel;
 
@@ -68,7 +70,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	 */
 	@Override
 	protected ResourceLocation getEntityTexture(EntityLootableBody entity) {
-
+		if(LootableBodies.useLocalSkin) return localSkin;
 
 		GameProfile profile = entity.getGameProfile();
 		if (profile != null && profile.getId() != null) {
@@ -106,12 +108,11 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 		this.mainModel.isChild = entity.isChild();
 
 		try {
-			float rotationInterpolation = this.interpolateRotation(entity.prevRenderYawOffset, entity.renderYawOffset, partialTick);
-			float headTotationInterpolation = this.interpolateRotation(entity.prevRotationYawHead, entity.rotationYawHead, partialTick);
+			float rotationInterpolation = 0F;
 			float headYaw = 0;
 
 
-			float headPitch = 0;//entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTick;
+			float headPitch = 0;
 			this.renderLivingAt(entity, x, y, z);
 			float age = 0.0F;
 			this.rotateCorpse(entity, age, rotationInterpolation, partialTick);

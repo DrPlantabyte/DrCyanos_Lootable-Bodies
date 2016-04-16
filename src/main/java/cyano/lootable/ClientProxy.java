@@ -2,7 +2,6 @@ package cyano.lootable;
 
 import cyano.lootable.entities.EntityLootableBody;
 import cyano.lootable.graphics.CorpseRenderer;
-import cyano.lootable.graphics.SkeletonRenderer;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraftforge.fml.client.registry.IRenderFactory;
@@ -19,7 +18,7 @@ public class ClientProxy extends Proxy{
 		RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new IRenderFactory<EntityLootableBody>() {
 			@Override
 			public Render<? super EntityLootableBody> createRenderFor(RenderManager rm) {
-				return (LootableBodies.pileOfBones ? new SkeletonRenderer(rm) : new CorpseRenderer(rm));
+				return (new CorpseRenderer(rm));
 			}
 		});
     }
