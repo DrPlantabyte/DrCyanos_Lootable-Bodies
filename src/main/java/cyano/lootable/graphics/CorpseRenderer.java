@@ -184,6 +184,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 	{
 		super.renderLivingAt(e,x,y,z); // translation
 		GlStateManager.rotate(90,1F,0F,0F); // face-down
+		GlStateManager.rotate(e.getRotation(),0F,0F,1F); // turn
 		GlStateManager.translate(0F, -0.85F, -0.125F); // center
 	}
 

@@ -67,6 +67,21 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		super.setDropItemsWhenDead(true);
 	}
 
+	public EntityLootableBody(EntityPlayer player){
+		this(player.getEntityWorld());
+		this.posX = player.posX;
+		this.posY = player.posY;
+		this.posZ = player.posZ;
+
+		this.motionX = player.motionX;
+		this.motionY = player.motionY+0.0784000015258789;
+		this.motionZ = player.motionZ;
+
+		this.newPosX = posX;
+		//this.newPosY = posY; // no newPosY?
+		//this.newPosZ = posZ; // no newPosZ?
+	}
+
 
 
 	private void log(String format, Object... o){
@@ -81,8 +96,10 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	@Override
 	public void onEntityUpdate(){
 		super.onEntityUpdate();
+		final boolean isClient = getEntityWorld().isRemote;
+		final boolean isServer = !isClient;
 
-		if(terminate >= 0){
+		if(isServer && terminate >= 0){
 			// in death mode
 			if(terminate == DEATH_COUNTDOWN) dropAllItems();
 			// handle self-removal from entity list in world
@@ -93,7 +110,8 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			}
 			return;
 		}
-		if(terminate < 0 && (super.getHealth() <= 0 || this.isDead)){
+		if(isServer && terminate < 0 && (this.getHealth() <= 0 || this.isDead)){
+			log("Dying.. Health=%s, isDead=%s",this.getHealth(), this.isDead);
 			terminate = DEATH_COUNTDOWN;
 		}
 
@@ -104,18 +122,18 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			log("generating game profile from %s",nameUpdate);// TODO: remove
 			if(nameUpdate != null && nameUpdate.trim().length() > 0) {
 				GameProfile gp = new GameProfile(null, nameUpdate);
-				if((!LootableBodies.pileOfBones) && this.getEntityWorld().isRemote) gp = TileEntitySkull.updateGameprofile(gp);
+				if((!LootableBodies.pileOfBones) && isClient) gp = TileEntitySkull.updateGameprofile(gp);
 				setGameProfile(gp);
-				super.setCustomNameTag(nameUpdate);
+				this.setCustomNameTag(nameUpdate);
 			} else {
 				setGameProfile(null);
-				super.setCustomNameTag("");
+				this.setCustomNameTag("");
 			}
 		}
 
 		// handle decay time
 		final long currentTime = getEntityWorld().getTotalWorldTime();
-		if(LootableBodies.allowCorpseDecay){
+		if(isServer && LootableBodies.allowCorpseDecay){
 			if(LootableBodies.decayOnlyWhenEmpty && isEmpty() == false){
 				deathTimestamp = currentTime;
 			}
@@ -126,17 +144,18 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		}
 
 		// handle item decay
-		if(LootableBodies.ticksPerItemDecay > 0){
+		if(isServer && LootableBodies.ticksPerItemDecay > 0){
 			long age = currentTime - decayTimestamp;
 			if(age > LootableBodies.ticksPerItemDecay){
-				decayTimestamp = currentTime;
-				decayItems();
+				int decayAmount = (int)(age / LootableBodies.ticksPerItemDecay);
+				decayTimestamp += decayAmount * LootableBodies.ticksPerItemDecay;
+				decayItems(decayAmount);
 			}
 		}
 
 
 		// move items from buffer to main inventory
-		if(!auxInventory.isEmpty()) {
+		if(isServer && !auxInventory.isEmpty()) {
 			for (int slot = this.getSizeInventory() - 1; slot >= EQUIPMENT_SLOTS.length; slot--) {
 				if(this.getStackInSlot(slot) == null){
 					this.setInventorySlotContents(slot,auxInventory.pollFirst());
@@ -147,7 +166,8 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		}
 
 		// handle item vacuuming
-		if(++vacuumTime < VACUUM_TIMELIMIT){
+		if(isServer && vacuumTime < VACUUM_TIMELIMIT){
+			vacuumTime++;
 			List<EntityItem> items = getEntityWorld().getEntitiesWithinAABB(EntityItem.class, new AxisAlignedBB(
 					posX - VACUUM_RADIUS, posY - VACUUM_RADIUS, posZ - VACUUM_RADIUS,
 					posX + VACUUM_RADIUS, posY + VACUUM_RADIUS, posZ + VACUUM_RADIUS));
@@ -172,7 +192,10 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 	private ItemStack decayItem(ItemStack item, int amount) {
-		if(item.stackSize == 1 && item.isItemStackDamageable() && item.getItem().isDamageable()){
+		if(item != null
+				&& item.stackSize == 1
+				&& item.isItemStackDamageable()
+				&& item.getItem().isDamageable()){
 			int durabilityRemaining = item.getMaxDamage() - item.getItemDamage() - 1;
 			if(durabilityRemaining > 0){
 				item.damageItem(Math.min(durabilityRemaining,amount),this);
@@ -311,7 +334,8 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 	public void jumpOutOfWall(){
-		BlockPos currentCoord = new BlockPos(this.posX, this.posY, this.posZ);
+		log("Escaping from wall at position %s",this.getPosition());
+		BlockPos currentCoord = this.getPosition();
 		// first try going out to the nearest adjacent block
 		double[] vector = new double[3];
 		vector[0] = currentCoord.getX()+0.5 - this.posX;
@@ -364,15 +388,17 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		vector[1] = worldObj.rand.nextDouble() * 2;
 		vector[2] = worldObj.rand.nextDouble() * 2;
 		this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+		log("jumped to %s",this.getPosition());
 	}
 
 
 
 	@Override
 	protected void kill() {
-		terminate = DEATH_COUNTDOWN;
+		if(terminate < 0) terminate = DEATH_COUNTDOWN;
 		this.attackEntityFrom(DamageSource.outOfWorld, this.getMaxHealth());
 		this.markDirty();
+		log("Kill command issued, stacktrace: \n\t%s",Arrays.toString(Thread.currentThread().getStackTrace()).replace(",",",\n\t")); // TODO: remove
 	}
 
 
@@ -652,6 +678,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			root.setString("Name", getGameProfile().getName());
 		}
 		root.setLong("DeathTime", this.getDeathTimestamp());
+		root.setLong("DecayTime",this.decayTimestamp);
 	}
 
 
@@ -683,6 +710,9 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		if(root.hasKey("DeathTime")){
 			this.setDeathTimestamp(root.getLong("DeathTime"));
 		}
+		if(root.hasKey("DecayTime")){
+			this.decayTimestamp = root.getLong("DecayTime");
+		}
 		if (root.hasKey("Yaw")) {
 			this.rotationYaw = root.getFloat("Yaw");
 		}
@@ -693,8 +723,10 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 	public boolean useThinArms() {
-		if(this.getGameProfile() != null){
-			UUID uid = this.getGameProfile().getId();
+		GameProfile p = this.getGameProfile();
+		if(p != null){
+			if(p.isLegacy()) return false;
+			UUID uid = p.getId();
 			if(uid != null){
 				return (uid.hashCode() & 1) == 1;
 			}
