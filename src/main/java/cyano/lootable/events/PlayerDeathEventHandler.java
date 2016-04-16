@@ -12,7 +12,6 @@ import net.minecraft.util.EnumHandSide;
 import net.minecraft.world.World;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
@@ -27,16 +26,8 @@ public class PlayerDeathEventHandler {
 
 	private static final Map<EntityPlayer,Map<ItemStack,EntityEquipmentSlot>> equipmentCache = new HashMap<>();
 
-	// TODO: handed-ness
-	// TODO: bones and rotten flesh
-	@SubscribeEvent(priority= EventPriority.LOW)
-	public void entityHurtEvent(LivingHurtEvent e){
-		log("%s: %s %s damage to %s",e.getClass(), e.getSource().damageType, e.getAmount(), e.getEntity().getClass());// TODO: remove
-	}
-
 	@SubscribeEvent(priority= EventPriority.LOW)
 	public void entityDeathEvent(LivingDeathEvent e){
-		log("%s: %s was killed by %s ",e.getClass(), e.getEntity().getClass(), e.getSource().damageType);// TODO: remove
 		if(e.getEntity() instanceof EntityPlayer
 				&& e.getResult() != Event.Result.DENY
 				&& !e.getEntity().getEntityWorld().isRemote) {
@@ -57,7 +48,6 @@ public class PlayerDeathEventHandler {
 
 	@SubscribeEvent(priority= EventPriority.LOWEST)
 	public void entityDropEvent(LivingDropsEvent e){
-		log("%s: %s was dropped by %s. Dropped items: %s",e.getClass(), e.getEntity().getClass(), e.getSource().damageType, e.getDrops());// TODO: remove
 		if(e.getEntity() instanceof EntityPlayer
 				&& e.getResult() != Event.Result.DENY
 				&& !e.getEntity().getEntityWorld().isRemote) {
@@ -65,13 +55,11 @@ public class PlayerDeathEventHandler {
 			if(player.isSpectator()) return;
 			final World w = player.getEntityWorld();
 			Map<ItemStack,EntityEquipmentSlot> cache = equipmentCache.computeIfAbsent(player, (EntityPlayer p) -> new HashMap<>());
-			log("slot cache: %s ",cache);// TODO: remove
 
 			EntityLootableBody corpse = new EntityLootableBody(player);
 			corpse.forceSpawn = true;
 			CommandSummon k;
 			corpse.setUserName(player.getName());
-			log("player %s dropping loot at (%s d%s/dt, %s d%s/dt, %s d%s/dt)",player.getName(), player.posX, player.motionX, player.posY, player.motionY, player.posZ, player.motionZ);// TODO: remove
 			corpse.setRotation(player.rotationYaw);
 
 			List<ItemStack> items = new ArrayList<>();

@@ -106,7 +106,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 			return;
 		}
 		if(isServer && terminate < 0 && (this.getHealth() <= 0 || this.isDead)){
-			log("Dying.. Health=%s, isDead=%s",this.getHealth(), this.isDead);
 			terminate = DEATH_COUNTDOWN;
 		}
 
@@ -114,7 +113,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		String nameUpdate = this.getCustomNameTag();
 		if(ObjectUtils.notEqual(oldName,nameUpdate)){
 			oldName = nameUpdate;
-			log("generating game profile from %s",nameUpdate);// TODO: remove
 			if(nameUpdate != null && nameUpdate.trim().length() > 0) {
 				GameProfile gp = new GameProfile(null, nameUpdate);
 				if((!LootableBodies.useLocalSkin) && isClient) gp = TileEntitySkull.updateGameprofile(gp);
@@ -239,15 +237,12 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	@Override
 	protected void damageEntity(DamageSource src, float amount){
-		log("%s damage from %s",amount, src.getDamageType());// TODO: remove
 		String type = String.valueOf(src == null ? null : src.getDamageType()); // null protection
 		if(src instanceof EntityDamageSource && src.getEntity() instanceof EntityPlayer){
-			log("checking for shovel hit");// TODO: remove
 			EntityPlayer player = (EntityPlayer)src.getEntity();
 			ItemStack item = player.getHeldItem(EnumHand.MAIN_HAND);
 			if(item.getItem() instanceof ItemSpade || item.getItem().getToolClasses(item).contains("shovel")){
 				this.kill();
-				log("%s is a shovel",item);// TODO: remove
 			}
 		}
 		if(type.equals(DamageSource.outOfWorld.getDamageType())) {
@@ -288,11 +283,9 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	public void setGameProfile(GameProfile gp){
 		gpSwap.set(gp);
-		log("Game profile set to %s", gp);// TODO: remove
 	}
 	public void setUserName(String name){
 		this.setCustomNameTag(name);
-		log("Name change request %s", name);// TODO: remove
 	}
 
 	private long getDeathTimestamp() {
@@ -389,7 +382,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		if(terminate < 0) terminate = DEATH_COUNTDOWN;
 		this.attackEntityFrom(DamageSource.outOfWorld, this.getMaxHealth());
 		this.markDirty();
-		log("Kill command issued, stacktrace: \n\t%s",Arrays.toString(Thread.currentThread().getStackTrace()).replace(",",",\n\t")); // TODO: remove
 	}
 
 
@@ -543,9 +535,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	@Override
 	public boolean processInteract(EntityPlayer player, EnumHand hand, ItemStack item){
-		log("Interaction");// TODO: remove
 		if(player.getPosition().distanceSq(this.getPosition()) < 25) {
-			log("Sending GUI request");// TODO: remove
 			FMLNetworkHandler.openGui(player, LootableBodies.getInstance(), 0, getEntityWorld(), this.getEntityId(), 0, 0);
 			return true;
 		}
@@ -610,7 +600,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 	}
 
 	private void dropAllItems(){
-		log("Dropping inventory"); // TODO: remove
 		for(EntityEquipmentSlot e : EQUIPMENT_SLOTS){
 			ItemStack i = this.getItemStackFromSlot(e);
 			if(i != null)this.getEntityWorld().spawnEntityInWorld(new EntityItem(this.getEntityWorld(),posX,posY,posZ,
@@ -675,8 +664,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 	@Override
 	public void readEntityFromNBT(final NBTTagCompound root) {
-		log("Reading from NBT: %s", root.toString());// TODO: remove
-		log("root.getString(\"Name\")->%s", root.getString("Name"));// TODO: remove
 		super.readEntityFromNBT(root);
 		if (root.hasKey("Equipment", 9)) {
 			final NBTTagList nbttaglist = root.getTagList("Equipment", 10);

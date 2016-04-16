@@ -1,12 +1,10 @@
 package cyano.lootable.graphics;
 
-import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.world.World;
-import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.network.IGuiHandler;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -55,15 +53,10 @@ public class GUIHandler implements IGuiHandler {
 	@SideOnly(Side.CLIENT)
 	public Object getClientGuiElement(int id, EntityPlayer player, World world,
 									  int x, int y, int z) {
-		FMLLog.info("%s: getClientGuiElement(%s, %s, %s, %s, %s, %s)",
-				LootableBodies.MODID, id, player.getName(), world.getClass().getSimpleName(), x, y, z);// TODO: remove
 		switch (id) {
 			case 0:
 				Entity e = world.getEntityByID(x);
-				FMLLog.info("%s (client): got entity %s",
-					LootableBodies.MODID, world.getEntityByID(x));// TODO: remove
 				if (e instanceof EntityLootableBody)
-					FMLLog.info("%s (client): opening GUI",LootableBodies.MODID);// TODO: remove
 					return new CorpseGUIContainer(player.inventory, (IInventory) e);
 		}
 		return null;
@@ -75,15 +68,10 @@ public class GUIHandler implements IGuiHandler {
 	@Override
 	public Object getServerGuiElement(int id, EntityPlayer player, World world,
 									  int x, int y, int z) {
-		FMLLog.info("%s: getServerGuiElement(%s, %s, %s, %s, %s, %s)",
-				LootableBodies.MODID, id, player.getName(), world.getClass().getSimpleName(), x, y, z);// TODO: remove
 		switch (id) {
 			case 0:
 				Entity e = world.getEntityByID(x);
-				FMLLog.info("%s (server): got entity %s",
-						LootableBodies.MODID, world.getEntityByID(x));// TODO: remove
 				if (e instanceof EntityLootableBody)
-					FMLLog.info("%s (server): opening GUI",LootableBodies.MODID);// TODO: remove
 					return new CorpseContainer(player.inventory, (IInventory) e);
 		}
 		return null;
