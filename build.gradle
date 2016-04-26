@@ -38,7 +38,7 @@ archivesBaseName = "CyanosLootableBodies_1.9"
 minecraft {
 	version = "1.9-12.16.0.1865-1.9"
 	runDir = "run"
-	mappings = "snapshot_20160419"
+	mappings = "snapshot_20160425"
 }
 
 
