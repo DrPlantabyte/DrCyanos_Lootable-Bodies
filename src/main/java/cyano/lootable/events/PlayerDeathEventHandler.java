@@ -74,8 +74,8 @@ public class PlayerDeathEventHandler {
 			corpse.initializeItems(items.toArray(new ItemStack[0]));
 
 			if(LootableBodies.addBonesToCorpse){
-				corpse.addItem(new ItemStack(Items.bone,1+w.rand.nextInt(3)));
-				corpse.addItem(new ItemStack(Items.rotten_flesh,1+w.rand.nextInt(3)));
+				corpse.addItem(new ItemStack(Items.BONE,1+w.rand.nextInt(3)));
+				corpse.addItem(new ItemStack(Items.ROTTEN_FLESH,1+w.rand.nextInt(3)));
 			}
 
 			w.spawnEntityInWorld(corpse);

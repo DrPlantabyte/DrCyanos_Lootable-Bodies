@@ -70,7 +70,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		this.motionY = player.motionY+0.0784000015258789;
 		this.motionZ = player.motionZ;
 
-		this.newPosX = posX;
+		//this.newPosX = posX; // no newPosX?
 		//this.newPosY = posY; // no newPosY?
 		//this.newPosZ = posZ; // no newPosZ?
 		this.markDirty();
