@@ -7,7 +7,6 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.IInventory;
@@ -241,8 +240,10 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		if(src instanceof EntityDamageSource && src.getEntity() instanceof EntityPlayer){
 			EntityPlayer player = (EntityPlayer)src.getEntity();
 			ItemStack item = player.getHeldItem(EnumHand.MAIN_HAND);
-			if(item.getItem() instanceof ItemSpade || item.getItem().getToolClasses(item).contains("shovel")){
-				this.kill();
+			if(item != null) {
+				if (item.getItem() instanceof ItemSpade || item.getItem().getToolClasses(item).contains("shovel")) {
+					this.kill();
+				}
 			}
 		}
 		if(type.equals(DamageSource.outOfWorld.getDamageType())) {
@@ -256,8 +257,6 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 
 		// damage handling
 		if(LootableBodies.completelyInvulnerable) return;
-
-		EntityZombie h;
 
 		if(src instanceof EntityDamageSource ){
 			if(LootableBodies.hurtByAttacks) super.damageEntity(src,amount);
