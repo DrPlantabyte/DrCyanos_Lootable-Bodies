@@ -34,7 +34,7 @@ javadoc {
 
 version = "2.1.0"
 group= "cyano.lootable"
-archivesBaseName = "CyanosLootableBodies_1.9.4"
+archivesBaseName = "DrCyanosLootableBodies_1.9.4"
 
 minecraft {
 	version = "1.9.4-12.17.0.1922-1.9.4"
