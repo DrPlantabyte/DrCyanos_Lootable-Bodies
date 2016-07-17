@@ -1,7 +1,13 @@
 package cyano.lootable.graphics;
 
+import java.util.Map;
+
+import org.apache.logging.log4j.Level;
+
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture.Type;
+
 import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
 import net.minecraft.client.Minecraft;
@@ -10,8 +16,6 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RenderLivingBase;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.entity.RenderPigZombie;
-import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.renderer.entity.layers.LayerArrow;
 import net.minecraft.client.renderer.entity.layers.LayerBipedArmor;
 import net.minecraft.client.renderer.entity.layers.LayerCustomHead;
@@ -21,9 +25,6 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import org.apache.logging.log4j.Level;
-
-import java.util.Map;
 
 /**
  * Created by Chris on 4/10/2016.
@@ -47,10 +48,9 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 		this.addLayer(new LayerHeldItem(this));
 		this.addLayer(new LayerArrow(this));
 		this.addLayer(new LayerCustomHead(this.getMainModel().bipedHead));
-		RenderPlayer k;
-		RenderPigZombie j;
 	}
 
+	@Override
 	public ModelPlayer getMainModel()
 	{
 		return (ModelPlayer)super.getMainModel();
@@ -82,9 +82,9 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 
 	public static ResourceLocation getSkin(GameProfile profile) {
 		final Minecraft minecraft = Minecraft.getMinecraft();
-		final Map loadSkinFromCache = minecraft.getSkinManager().loadSkinFromCache(profile); // returned map may or may not be typed
+		final Map<Type, MinecraftProfileTexture> loadSkinFromCache = minecraft.getSkinManager().loadSkinFromCache(profile); // returned map may or may not be typed
 		if (loadSkinFromCache.containsKey(MinecraftProfileTexture.Type.SKIN)) {
-			ResourceLocation skin = minecraft.getSkinManager().loadSkin((MinecraftProfileTexture) loadSkinFromCache.get(MinecraftProfileTexture.Type.SKIN), MinecraftProfileTexture.Type.SKIN);
+			ResourceLocation skin = minecraft.getSkinManager().loadSkin(loadSkinFromCache.get(MinecraftProfileTexture.Type.SKIN), MinecraftProfileTexture.Type.SKIN);
 			return skin;
 		} else {
 			return DefaultPlayerSkin.getDefaultSkin(profile.getId());
@@ -94,7 +94,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 
 	@Override
 	public void doRender(EntityLootableBody entity, double x, double y, double z, float yaw, float partialTick) {
-		if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Pre<EntityLootableBody>(entity, this, x, y, z)))
+		if (net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Pre<>(entity, this, x, y, z)))
 			return;
 
 		this.setModel(entity.useThinArms());
@@ -174,7 +174,7 @@ public class CorpseRenderer extends RenderLivingBase<EntityLootableBody> {
 			this.renderName(entity, x, y, z);
 		}
 
-		net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Post<EntityLootableBody>(entity, this, x, y, z));
+		net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.client.event.RenderLivingEvent.Post<>(entity, this, x, y, z));
 
 		this.setModel(true);
 	}

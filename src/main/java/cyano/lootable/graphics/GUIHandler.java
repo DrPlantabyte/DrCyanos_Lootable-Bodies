@@ -17,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Created by Chris on 4/12/2016.
  */
 public class GUIHandler implements IGuiHandler {
+	@SuppressWarnings("unused")
 	private static final AtomicInteger guiIDCounter = new AtomicInteger(1);
 
 	private GUIHandler() {
@@ -58,6 +59,8 @@ public class GUIHandler implements IGuiHandler {
 				Entity e = world.getEntityByID(x);
 				if (e instanceof EntityLootableBody)
 					return new CorpseGUIContainer(player.inventory, (IInventory) e);
+			default:
+				break;
 		}
 		return null;
 	}
@@ -73,6 +76,8 @@ public class GUIHandler implements IGuiHandler {
 				Entity e = world.getEntityByID(x);
 				if (e instanceof EntityLootableBody)
 					return new CorpseContainer(player.inventory, (IInventory) e);
+			default:
+				break;
 		}
 		return null;
 	}
