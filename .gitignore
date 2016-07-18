@@ -5,6 +5,8 @@
 /.gradle/*
 /eclipse/*
 *.index
+.settings/
+.project
 *~
 /temp/*
 /build/*
@@ -12,5 +14,5 @@
 /.idea/*
 temp/*
 /run/*
-
+*.launch
 /bin/
