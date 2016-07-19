@@ -1,8 +1,12 @@
 package cyano.lootable.events;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import cyano.lootable.LootableBodies;
 import cyano.lootable.entities.EntityLootableBody;
-import net.minecraft.command.server.CommandSummon;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
@@ -16,11 +20,6 @@ import net.minecraftforge.fml.common.FMLLog;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class PlayerDeathEventHandler {
 
@@ -58,7 +57,6 @@ public class PlayerDeathEventHandler {
 
 			EntityLootableBody corpse = new EntityLootableBody(player);
 			corpse.forceSpawn = true;
-			CommandSummon k;
 			corpse.setUserName(player.getName());
 			corpse.setRotation(player.rotationYaw);
 
@@ -86,9 +84,11 @@ public class PlayerDeathEventHandler {
 	}
 
 
+	@SuppressWarnings("unused")
 	private static void log(String s, Object... o){
 		FMLLog.info("%s: %s", LootableBodies.MODID,String.format(s,o));
 	}
+	@SuppressWarnings("unused")
 	private static void log(Object o){
 		FMLLog.info("%s: %s", LootableBodies.MODID,String.valueOf(o));
 	}

@@ -22,8 +22,6 @@ public class CorpseContainer extends net.minecraft.inventory.Container {
 	private final IInventory targetInventory;
 	public CorpseContainer(InventoryPlayer playerItems, IInventory entity){
 		this.targetInventory = entity;
-		net.minecraft.inventory.ContainerHorseInventory k;
-		net.minecraft.inventory.ContainerPlayer h;
 		int index = 0;
 		while(index < 4) {
 			// armor
@@ -38,6 +36,8 @@ public class CorpseContainer extends net.minecraft.inventory.Container {
 				public boolean isItemValid(ItemStack item) {
 					return super.isItemValid(item) && item.getItem().isValidArmor(item, EQUIPMENT_SLOTS[i], (Entity) targetInventory);
 				}
+				
+				@Override
 				@SideOnly(Side.CLIENT)
 				public String getSlotTexture()
 				{
@@ -50,6 +50,7 @@ public class CorpseContainer extends net.minecraft.inventory.Container {
 			// held items
 			final int i = index;
 			this.addSlotToContainer(new net.minecraft.inventory.Slot(targetInventory, i, 8 + 18 * (i - 4), 98 ) {
+				@Override
 				@SideOnly(Side.CLIENT)
 				public String getSlotTexture()
 				{
@@ -84,7 +85,7 @@ public class CorpseContainer extends net.minecraft.inventory.Container {
 	public ItemStack transferStackInSlot(EntityPlayer player, int slot) {
 		int hostSize = targetInventory.getSizeInventory();
 		ItemStack stack = null;
-		Slot slotObject = (Slot) inventorySlots.get(slot);
+		Slot slotObject = inventorySlots.get(slot);
 		//null checks and checks if the item can be stacked (maxStackSize > 1)
 		if (slotObject != null && slotObject.getHasStack()) {
 			ItemStack stackInSlot = slotObject.getStack();

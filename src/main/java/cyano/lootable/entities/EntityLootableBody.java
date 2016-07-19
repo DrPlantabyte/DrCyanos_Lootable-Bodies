@@ -81,6 +81,7 @@ public class EntityLootableBody extends EntityLiving implements IInventory{
 		FMLLog.info("%s: %s",getClass().getSimpleName(), String.format(format, o));
 	}
 
+	@SuppressWarnings("unused")
 	private void log(Object o){
 		FMLLog.info("%s: %s",getClass().getSimpleName(),String.valueOf(o));
 	}

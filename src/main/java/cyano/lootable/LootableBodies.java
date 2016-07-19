@@ -124,7 +124,7 @@ public class LootableBodies {
 		
 	}
 	private int entityIndex = 0;
-	private void registerEntity(Class entityClass){
+	private void registerEntity(Class<EntityLootableBody> entityClass){
 		String idName = "Corpse";
  		EntityRegistry.registerModEntity(entityClass, idName, entityIndex++/*mod-specific entity id*/, this, 32/*trackingRange*/, 1/*updateFrequency*/, true/*sendsVelocityUpdates*/);
  		
@@ -146,7 +146,6 @@ public class LootableBodies {
 		return INSTANCE;
 	}
 	
-	
 	private static boolean or(boolean... bools){
 		for(int i = 0; i < bools.length; i++){
 			if(bools[i] == true) return true;
@@ -154,6 +153,7 @@ public class LootableBodies {
 		return false;
 	}
 	
+	@SuppressWarnings("unused")
 	private static boolean and(boolean... bools){
 		for(int i = 0; i < bools.length; i++){
 			if(bools[i] == false) return false;
