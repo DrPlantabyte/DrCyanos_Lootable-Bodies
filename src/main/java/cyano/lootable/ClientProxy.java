@@ -1,3 +1,4 @@
+
 package cyano.lootable;
 
 import net.minecraft.client.Minecraft;
@@ -25,11 +26,11 @@ public class ClientProxy extends Proxy{
         // add renderers
         // Fancy Corpses not supported in 1.7.10!
 //        if(LootableBodies.fancyCorpses){
-//          RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderSkinnedLootableBody(rm));
+//        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderSkinnedLootableBody(rm));
 //        }else {
-            RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderLootableBody(rm));
+        	RenderingRegistry.registerEntityRenderingHandler(EntityLootableBody.class, new RenderLootableBody(rm));
 //        }
-        
+    	
     }
 
     @Override
