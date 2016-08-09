@@ -1,4 +1,3 @@
-
 package cyano.lootable;
 
 import net.minecraft.client.Minecraft;
