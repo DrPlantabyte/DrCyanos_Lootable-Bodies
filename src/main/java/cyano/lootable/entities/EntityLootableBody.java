@@ -34,212 +34,212 @@ import cyano.lootable.LootableBodies;
 
 public class EntityLootableBody extends net.minecraft.entity.EntityLiving implements IInventory{
 
-    public static final int INVENTORY_SIZE = 9*6;
-    public static int additionalItemDamage = 10;
-    public static float corpseHP = 40;
-    public static boolean hurtByFire = false;
-    public static boolean hurtByBlast = false;
-    public static boolean hurtByFall = false;
-    public static boolean hurtByCactus = false;
-    public static boolean hurtByWeapons = false;
-    public static boolean hurtByBlockSuffocation = false;
-    public static boolean hurtByAll = false;
-    public static boolean hurtByOther = false;
-    public static boolean invulnerable = false;
-    
-    final static byte VACUUM_TIMELIMIT = 20;
-    final static int VACUUM_RADIUS = 3;
-    
-    final static int WATCHER_ID_OWNER = 28;
-    
-    private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
+	public static final int INVENTORY_SIZE = 9*6;
+	public static int additionalItemDamage = 10;
+	public static float corpseHP = 40;
+	public static boolean hurtByFire = false;
+	public static boolean hurtByBlast = false;
+	public static boolean hurtByFall = false;
+	public static boolean hurtByCactus = false;
+	public static boolean hurtByWeapons = false;
+	public static boolean hurtByBlockSuffocation = false;
+	public static boolean hurtByAll = false;
+	public static boolean hurtByOther = false;
+	public static boolean invulnerable = false;
+	
+	final static byte VACUUM_TIMELIMIT = 20;
+	final static int VACUUM_RADIUS = 3;
+	
+	final static int WATCHER_ID_OWNER = 28;
+	
+	private static final DamageSource selfDestruct = new DamageSource(EntityLootableBody.class.getSimpleName());
 
-    
-    protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
-    protected final java.util.Deque<ItemStack> auxInventory = new java.util.LinkedList<ItemStack>();
-    private byte vacuumTime = 0;
-    private GameProfile owner = null;
-    private int shovelHits = 0;
-    private static final int shovelHitLimit = 3;
-    
-    private long deathTimestamp = Long.MAX_VALUE;
-    
-    private boolean deadMode = false;
-    
-    public EntityLootableBody(World w) {
-        super(w);
-        this.setSize(0.85f, 0.75f);
-        this.isImmuneToFire = (!hurtByFire) || invulnerable;
-        vacuumTime = 0;
-        this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
-    }
-    
-    
-    @Override
+	
+	protected final ItemStack[] equipment = new ItemStack[INVENTORY_SIZE];
+	protected final java.util.Deque<ItemStack> auxInventory = new java.util.LinkedList<ItemStack>();
+	private byte vacuumTime = 0;
+	private GameProfile owner = null;
+	private int shovelHits = 0;
+	private static final int shovelHitLimit = 3;
+	
+	private long deathTimestamp = Long.MAX_VALUE;
+	
+	private boolean deadMode = false;
+	
+	public EntityLootableBody(World w) {
+		super(w);
+		this.setSize(0.85f, 0.75f);
+		this.isImmuneToFire = (!hurtByFire) || invulnerable;
+		vacuumTime = 0;
+		this.getDataWatcher().addObject(WATCHER_ID_OWNER, "");
+	}
+	
+	
+	@Override
     protected void applyEntityAttributes() {
-        // called during constructor of EntityLivingBase
+		// called during constructor of EntityLivingBase
         super.applyEntityAttributes();
         this.getEntityAttribute(SharedMonsterAttributes.maxHealth).setBaseValue(corpseHP);
     }
-    
-    @Override
+	
+	@Override
     protected void entityInit() {
-        // called during constructor of Entity
+		// called during constructor of Entity
         super.entityInit();
-    }
-    
-    public float getRotation(){
-        return this.rotationYaw;
-    }
-    
-    public void setRotation(float newRot){
-        this.rotationYaw = newRot;
-        this.renderYawOffset = this.rotationYaw;
-        this.prevRenderYawOffset = this.rotationYaw;
-        this.prevRotationYaw = this.rotationYaw;
-        this.newRotationYaw = this.rotationYaw;
-        if(worldObj.isRemote){ // remote means client
-            this.setRotationYawHead(this.rotationYaw);
-        }
-    }
-    
-    @Override
+	}
+	
+	public float getRotation(){
+		return this.rotationYaw;
+	}
+	
+	public void setRotation(float newRot){
+		this.rotationYaw = newRot;
+		this.renderYawOffset = this.rotationYaw;
+		this.prevRenderYawOffset = this.rotationYaw;
+		this.prevRotationYaw = this.rotationYaw;
+		this.newRotationYaw = this.rotationYaw;
+		if(worldObj.isRemote){ // remote means client
+			this.setRotationYawHead(this.rotationYaw);
+		}
+	}
+	
+	@Override
     protected void updateEntityActionState() {
-        // do nothing
-    }
-    
-    @Override
+		// do nothing
+	}
+	
+	@Override
     protected boolean canDespawn() {
         return false;
     }
-    
-    public void setOwner(GameProfile gp){
-    try{
-        owner = gp;
-        updatePlayerProfile();
-        if(gp.getName() != null){
-            this.getDataWatcher().updateObject(WATCHER_ID_OWNER, gp.getName());
-        } else {
-            this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
-        }
-    }catch (Exception e){
-        System.err.println("Error: "+e);
-        this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
-    }
-    }
-    
-    public GameProfile getOwner(){
-        if(owner == null){
-            owner = getGameProfileFromName(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER));
-        } else if(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER).isEmpty()){
-            owner = null;
-        }
-        return owner;
-    }
-    
-    private void updatePlayerProfile() {
-        if (this.owner == null || StringUtils.isNullOrEmpty(this.owner.getName())) {
-            return;
-        }
-        if (owner.isComplete() && owner.getProperties().containsKey((Object)"textures")) {
-            return;
-        }
-        GameProfile field_152110_j = MinecraftServer.getServer().func_152358_ax().func_152655_a(owner.getName());
-        if (field_152110_j == null) {
-            return;
-        }
-        if (Iterables.getFirst((Iterable)field_152110_j.getProperties().get("textures"), (Object)null) == null) {
-            field_152110_j = MinecraftServer.getServer().func_147130_as().fillProfileProperties(field_152110_j, true);
-        }
-        owner = field_152110_j;
-        
-    }
+	
+	public void setOwner(GameProfile gp){
+	try{
+		owner = gp;
+		updatePlayerProfile();
+		if(gp.getName() != null){
+			this.getDataWatcher().updateObject(WATCHER_ID_OWNER, gp.getName());
+		} else {
+			this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
+		}
+	}catch (Exception e){
+		System.err.println("Error: "+e);
+		this.getDataWatcher().updateObject(WATCHER_ID_OWNER, "");
+	}
+	}
+	
+	public GameProfile getOwner(){
+		if(owner == null){
+			owner = getGameProfileFromName(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER));
+		} else if(this.getDataWatcher().getWatchableObjectString(WATCHER_ID_OWNER).isEmpty()){
+			owner = null;
+		}
+		return owner;
+	}
+	
+	private void updatePlayerProfile() {
+		if (this.owner == null || StringUtils.isNullOrEmpty(this.owner.getName())) {
+			return;
+		}
+		if (owner.isComplete() && owner.getProperties().containsKey((Object)"textures")) {
+			return;
+		}
+		GameProfile field_152110_j = MinecraftServer.getServer().func_152358_ax().func_152655_a(owner.getName());
+		if (field_152110_j == null) {
+			return;
+		}
+		if (Iterables.getFirst((Iterable)field_152110_j.getProperties().get("textures"), (Object)null) == null) {
+			field_152110_j = MinecraftServer.getServer().func_147130_as().fillProfileProperties(field_152110_j, true);
+		}
+		owner = field_152110_j;
+		
+	}
 
-    private GameProfile getGameProfileFromName(String name){
-        if(name == null || name.isEmpty()){
-            return null;
-        }
-        GameProfile gp = new GameProfile((UUID)null, name);
-        return gp; // may not be fully initialized
-    }
-    
-    @Override
+	private GameProfile getGameProfileFromName(String name){
+		if(name == null || name.isEmpty()){
+			return null;
+		}
+		GameProfile gp = new GameProfile((UUID)null, name);
+		return gp; // may not be fully initialized
+	}
+	
+	@Override
     public void onEntityUpdate() {
-        super.onEntityUpdate();
-        if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
-            // count-down decay timer
-            if(LootableBodies.decayOnlyWhenEmpty){
-                 for(int i = 0; i < this.equipment.length; i++){
-                 if(this.equipment[i] != null){
-                 this.deathTimestamp = worldObj.getTotalWorldTime();
-                 break;
-                 }
-                 }
-                 }
-            if((worldObj.getTotalWorldTime() - this.deathTimestamp) > LootableBodies.corpseDecayTime){
-                this.dropEquipment(true, 0);
-                this.kill();
-            }
-        }
+		super.onEntityUpdate();
+		if(LootableBodies.allowCorpseDecay && !this.worldObj.isRemote && worldObj.getWorldTime() % 20 == 0 ){
+			// count-down decay timer
+			if(LootableBodies.decayOnlyWhenEmpty){
+				 for(int i = 0; i < this.equipment.length; i++){
+				 if(this.equipment[i] != null){
+				 this.deathTimestamp = worldObj.getTotalWorldTime();
+				 break;
+				 }
+				 }
+				 }
+			if((worldObj.getTotalWorldTime() - this.deathTimestamp) > LootableBodies.corpseDecayTime){
+				this.dropEquipment(true, 0);
+				this.kill();
+			}
+		}
         if(vacuumTime < VACUUM_TIMELIMIT){
-            // vacuum up loose items (which may be dropped by other mods that give expanded inventories)
-            if(!this.worldObj.isRemote && this.notFull()){
-                double x1 = this.posX - VACUUM_RADIUS;
-                double y1 = this.posY - VACUUM_RADIUS;
-                double z1 = this.posZ - VACUUM_RADIUS;
-                double x2 = this.posX + VACUUM_RADIUS;
-                double y2 = this.posY + VACUUM_RADIUS;
-                double z2 = this.posZ + VACUUM_RADIUS;
-                List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, AxisAlignedBB.getBoundingBox(x1,y1,z1,x2,y2,z2));
-                if(!ae.isEmpty()){
-                    for(int n = ae.size() - 1; n >= 0; n--){
-                        Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
-                        ItemStack leftover = vacuumItem(((EntityItem)e).getEntityItem());
-                        this.worldObj.removeEntity(e);
-                        if(leftover != null){
-                            this.entityDropItem(leftover, 0.0f);
-                        }
-                    }
-                }
-            }
-            vacuumTime++;
+        	// vacuum up loose items (which may be dropped by other mods that give expanded inventories)
+        	if(!this.worldObj.isRemote && this.notFull()){
+        		double x1 = this.posX - VACUUM_RADIUS;
+        		double y1 = this.posY - VACUUM_RADIUS;
+        		double z1 = this.posZ - VACUUM_RADIUS;
+        		double x2 = this.posX + VACUUM_RADIUS;
+        		double y2 = this.posY + VACUUM_RADIUS;
+        		double z2 = this.posZ + VACUUM_RADIUS;
+        		List<Entity> ae = this.worldObj.getEntitiesWithinAABB(EntityItem.class, AxisAlignedBB.getBoundingBox(x1,y1,z1,x2,y2,z2));
+        		if(!ae.isEmpty()){
+        			for(int n = ae.size() - 1; n >= 0; n--){
+        				Entity e = ae.get(n); // old-school for-loop in reverse direction in case there are concurrent modification issues
+        				ItemStack leftover = vacuumItem(((EntityItem)e).getEntityItem());
+        				this.worldObj.removeEntity(e);
+        				if(leftover != null){
+        					this.entityDropItem(leftover, 0.0f);
+        				}
+        			}
+        		}
+        	}
+        	vacuumTime++;
         }
         shiftInventory();
         if(deadMode){
-             this.dropEquipment(true, 0);
-             worldObj.removeEntity(this);
-             }
+        	 this.dropEquipment(true, 0);
+        	 worldObj.removeEntity(this);
+        	 }
     }
     
     
-    /**
-     * condenses inventory when there's an overflow buffer
-     */
-    private void shiftInventory(){
-        if(!auxInventory.isEmpty()){
-            if(equipment[equipment.length - 1] == null){
-                // pull item from overflow buffer
-                equipment[equipment.length - 1] = auxInventory.pop();
-            }
-            for(int dstSlot = 5; dstSlot < equipment.length; dstSlot++){
-                if(equipment[dstSlot] == null){
-                    // shift next item to here
-                    int srcSlot = dstSlot+1;
-                    while( srcSlot < equipment.length && equipment[srcSlot] == null){
-                        srcSlot++;
-                    }
-                    if(srcSlot == equipment.length){
-                        // inventory already condensed
-                        return;
-                    }
-                    equipment[dstSlot] = equipment[srcSlot];
-                    equipment[srcSlot] = null;
-                }
-            }
-        }
-    }
+	/**
+	 * condenses inventory when there's an overflow buffer
+	 */
+	private void shiftInventory(){
+		if(!auxInventory.isEmpty()){
+			if(equipment[equipment.length - 1] == null){
+				// pull item from overflow buffer
+				equipment[equipment.length - 1] = auxInventory.pop();
+			}
+			for(int dstSlot = 5; dstSlot < equipment.length; dstSlot++){
+				if(equipment[dstSlot] == null){
+					// shift next item to here
+					int srcSlot = dstSlot+1;
+					while( srcSlot < equipment.length && equipment[srcSlot] == null){
+						srcSlot++;
+					}
+					if(srcSlot == equipment.length){
+						// inventory already condensed
+						return;
+					}
+					equipment[dstSlot] = equipment[srcSlot];
+					equipment[srcSlot] = null;
+				}
+			}
+		}
+	}
 
-    @Override
+	@Override
     public void writeEntityToNBT(final NBTTagCompound root) {
         super.writeEntityToNBT(root);
         final NBTTagList nbttaglist = new NBTTagList();
@@ -252,20 +252,20 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
         root.setTag("Equipment", nbttaglist);
         if(!this.auxInventory.isEmpty()){
-            final NBTTagList nbtauxtaglist = new NBTTagList();
-            Iterator<ItemStack> iter = this.auxInventory.iterator();
-            while (iter.hasNext()) {
-                ItemStack i = iter.next();
-                if(i == null) continue;
-                final NBTTagCompound nbttagcompound1 = new NBTTagCompound();
-                i.writeToNBT(nbttagcompound1);
-                nbtauxtaglist.appendTag(nbttagcompound1);
-            }
-            root.setTag("Aux", nbtauxtaglist);
+        	final NBTTagList nbtauxtaglist = new NBTTagList();
+        	Iterator<ItemStack> iter = this.auxInventory.iterator();
+        	while (iter.hasNext()) {
+        		ItemStack i = iter.next();
+        		if(i == null) continue;
+        		final NBTTagCompound nbttagcompound1 = new NBTTagCompound();
+        		i.writeToNBT(nbttagcompound1);
+        		nbtauxtaglist.appendTag(nbttagcompound1);
+        	}
+        	root.setTag("Aux", nbtauxtaglist);
         }
         if(vacuumTime < VACUUM_TIMELIMIT)root.setByte("Vac", vacuumTime);
         if(owner != null){
-            final NBTTagCompound nbtTagCompound = new NBTTagCompound();
+        	final NBTTagCompound nbtTagCompound = new NBTTagCompound();
             NBTUtil.func_152460_a(nbtTagCompound, owner);
             root.setTag("Owner", nbtTagCompound);
         }
@@ -274,38 +274,38 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     public void readEntityFromNBT(final NBTTagCompound root) {
-        // read equipment first because parent class also does equipment loading
-        if (root.hasKey("Equipment", 9)) {
+    	// read equipment first because parent class also does equipment loading
+    	if (root.hasKey("Equipment", 9)) {
             final NBTTagList nbttaglist = root.getTagList("Equipment", 10);
             for (int i = 0; i < equipment.length && i < nbttaglist.tagCount(); ++i) {
                 this.equipment[i] = ItemStack.loadItemStackFromNBT(nbttaglist.getCompoundTagAt(i));
             }
         }
-        root.removeTag("Equipment");
-        if(root.hasKey("Aux")){
-            final NBTTagList nbttaglist = root.getTagList("Aux", 10);
-            for (int i = 0; i < equipment.length && i < nbttaglist.tagCount(); ++i) {
-                this.auxInventory.addLast(ItemStack.loadItemStackFromNBT(nbttaglist.getCompoundTagAt(i)));
-            }
-        }
+    	root.removeTag("Equipment");
+    	if(root.hasKey("Aux")){
+    		final NBTTagList nbttaglist = root.getTagList("Aux", 10);
+    		for (int i = 0; i < equipment.length && i < nbttaglist.tagCount(); ++i) {
+    			this.auxInventory.addLast(ItemStack.loadItemStackFromNBT(nbttaglist.getCompoundTagAt(i)));
+    		}
+    	}
         super.readEntityFromNBT(root);
         // now read the rest of the tag
         if(root.hasKey("Vac")){
-            this.vacuumTime = root.getByte("Vac");
+        	this.vacuumTime = root.getByte("Vac");
         } else {
-            this.vacuumTime = VACUUM_TIMELIMIT;
+        	this.vacuumTime = VACUUM_TIMELIMIT;
         }
         if(root.hasKey("DeathTime")){
-            this.deathTimestamp = (root.getLong("DeathTime"));
+        	this.deathTimestamp = (root.getLong("DeathTime"));
         }
         if (root.hasKey("Yaw")) {
-            this.rotationYaw = root.getFloat("Yaw");
+        	this.rotationYaw = root.getFloat("Yaw");
         }
         if (root.hasKey("Owner")) {
-            this.setOwner(NBTUtil.func_152459_a(root.getCompoundTag("Owner")));
+        	this.setOwner(NBTUtil.func_152459_a(root.getCompoundTag("Owner")));
         }
         if (root.hasKey("Name")) {
-            this.setOwner(new GameProfile(null,root.getString("Name")));
+        	this.setOwner(new GameProfile(null,root.getString("Name")));
         }
         else if (root.hasKey("ExtraType", 8)) {
             final String string = root.getString("ExtraType");
@@ -318,217 +318,217 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     public boolean attackEntityFrom(final DamageSource src, float amount) {
-        // disable forge hook to fix bug
-//      if (ForgeHooks.onLivingAttack(this, src, amount)) {
+    	// disable forge hook to fix bug
+//    	if (ForgeHooks.onLivingAttack(this, src, amount)) {
 //            return false;
 //        }
-        if (this.isEntityInvulnerable()) {
-            return false;
-        }
-        if (this.worldObj.isRemote) {
-            return false;
-        }
-        this.entityAge = 0;
-        if (this.getHealth() <= 0.0f) {
-            return false;
-        }
-        if (src.isFireDamage() && this.isPotionActive(Potion.fireResistance)) {
-            return false;
-        }
-        boolean flag = true;
-        if (this.hurtResistantTime > this.maxHurtResistantTime / 2.0f) {
-            if (amount <= this.lastDamage) {
-                return false;
-            }
-            this.damageEntity(src, amount - this.lastDamage);
-            this.lastDamage = amount;
-            flag = false;
-        } else {
-            this.lastDamage = amount;
-            this.prevHealth = this.getHealth();
-            this.hurtResistantTime = this.maxHurtResistantTime;
-            this.damageEntity(src, amount);
-            final int n = 10;
-            this.maxHurtTime = n;
-            this.hurtTime = n;
-        }
-        final Entity entity = src.getEntity();
-        if (entity != null) {
-            if (entity instanceof EntityPlayer) {
-                this.recentlyHit = 100;
-                this.attackingPlayer = (EntityPlayer)entity;
-            }
-            else if (entity instanceof EntityTameable) {
-                final EntityTameable entitywolf = (EntityTameable)entity;
-                if (entitywolf.isTamed()) {
-                    this.recentlyHit = 100;
-                    this.attackingPlayer = null;
-                }
-            }
-        }
-        if (flag) {
-            this.worldObj.setEntityState(this, (byte)2);
-            if (src != DamageSource.drown) {
-                this.setBeenAttacked();
-            }
-            if (entity != null) {
-                double d1;
-                double d2;
-                for (d1 = entity.posX - this.posX, d2 = entity.posZ - this.posZ; d1 * d1 + d2 * d2 < 1.0E-4; d1 = (Math.random() - Math.random()) * 0.01, d2 = (Math.random() - Math.random()) * 0.01) {}
-                this.knockBack(entity, amount, d1, d2);
-            }
-        }
-        if (this.getHealth() <= 0.0f) {
-            final String s = this.getDeathSound();
-            if (flag && s != null) {
-                this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
-            }
-            this.onDeath(src);
-        }
-        else {
-            final String s = this.getHurtSound();
-            if (flag && s != null) {
-                this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
-            }
-        }
-        return true;
+    	if (this.isEntityInvulnerable()) {
+    		return false;
+    	}
+    	if (this.worldObj.isRemote) {
+    		return false;
+    	}
+    	this.entityAge = 0;
+    	if (this.getHealth() <= 0.0f) {
+    		return false;
+    	}
+    	if (src.isFireDamage() && this.isPotionActive(Potion.fireResistance)) {
+    		return false;
+    	}
+    	boolean flag = true;
+    	if (this.hurtResistantTime > this.maxHurtResistantTime / 2.0f) {
+    		if (amount <= this.lastDamage) {
+    			return false;
+    		}
+    		this.damageEntity(src, amount - this.lastDamage);
+    		this.lastDamage = amount;
+    		flag = false;
+    	} else {
+    		this.lastDamage = amount;
+    		this.prevHealth = this.getHealth();
+    		this.hurtResistantTime = this.maxHurtResistantTime;
+    		this.damageEntity(src, amount);
+    		final int n = 10;
+    		this.maxHurtTime = n;
+    		this.hurtTime = n;
+    	}
+    	final Entity entity = src.getEntity();
+    	if (entity != null) {
+    		if (entity instanceof EntityPlayer) {
+    			this.recentlyHit = 100;
+    			this.attackingPlayer = (EntityPlayer)entity;
+    		}
+    		else if (entity instanceof EntityTameable) {
+    			final EntityTameable entitywolf = (EntityTameable)entity;
+    			if (entitywolf.isTamed()) {
+    				this.recentlyHit = 100;
+    				this.attackingPlayer = null;
+    			}
+    		}
+    	}
+    	if (flag) {
+    		this.worldObj.setEntityState(this, (byte)2);
+    		if (src != DamageSource.drown) {
+    			this.setBeenAttacked();
+    		}
+    		if (entity != null) {
+    			double d1;
+    			double d2;
+    			for (d1 = entity.posX - this.posX, d2 = entity.posZ - this.posZ; d1 * d1 + d2 * d2 < 1.0E-4; d1 = (Math.random() - Math.random()) * 0.01, d2 = (Math.random() - Math.random()) * 0.01) {}
+    			this.knockBack(entity, amount, d1, d2);
+    		}
+    	}
+    	if (this.getHealth() <= 0.0f) {
+    		final String s = this.getDeathSound();
+    		if (flag && s != null) {
+    			this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+    		}
+    		this.onDeath(src);
+    	}
+    	else {
+    		final String s = this.getHurtSound();
+    		if (flag && s != null) {
+    			this.playSound(s, this.getSoundVolume(), this.getSoundPitch());
+    		}
+    	}
+    	return true;
     }
     
     @Override protected void damageEntity(final DamageSource src, float amount) {
-    //  System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
-        // .kill was called, override invulnerability
-        if(src == selfDestruct){
-            super.damageEntity(src,amount);
-            return;
-        }
-        // use shovel to dispose the body
-        if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
-            ItemStack itemStack = ((EntityPlayer)src.getEntity()).getHeldItem();
-            Item item = itemStack.getItem();
-            if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(itemStack, "shovel") >= 0){
-                shovelHits++;
-                super.damageEntity(src,amount);
-                if(shovelHits >= shovelHitLimit){
-                    // bury the body
-                    this.kill();
-                }
-            }
-        }
-        if(this.posY < -1){
-            // fell out of the world
-            this.kill();
-        }
-        
-        // spit the body out of a wall is hurt by block suffocation
-         if(src.equals(DamageSource.inWall)){
-             jumpOutOfWall();
-         }
-        
-        // special cases handled before this point
-        // general cases:
-        if(invulnerable) return;
-        if(this.hurtByAll) super.damageEntity(src, amount);
-        if(src.getEntity() != null && src.getEntity() instanceof EntityLivingBase && this.hurtByWeapons) super.damageEntity(src, amount);
-        if(src.isFireDamage() && this.hurtByFire) super.damageEntity(src, amount);
-        if(src.isExplosion() && this.hurtByBlast) super.damageEntity(src, amount);
-        if(src == DamageSource.fall && this.hurtByFall) super.damageEntity(src, amount);
-        if(src == DamageSource.cactus && this.hurtByCactus) super.damageEntity(src, amount);
-        if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
-        if(this.hurtByOther) super.damageEntity(src, amount);
-        
-        // He's dead, Jim
-         if(super.getHealth() <= 0){
-         deadMode = true;
-         }
+    //	System.out.println("Corpse hit by "+(src.getEntity() == null ? "unknown" : src.getEntity().getName())+" (instance of "+src.getClass().getName() +") for "+amount + " damage");
+    	// .kill was called, override invulnerability
+    	if(src == selfDestruct){
+    		super.damageEntity(src,amount);
+    		return;
+    	}
+    	// use shovel to dispose the body
+    	if(src.getEntity() != null && src.getEntity() instanceof EntityPlayer && ((EntityPlayer)src.getEntity()).getHeldItem() != null){
+    		ItemStack itemStack = ((EntityPlayer)src.getEntity()).getHeldItem();
+    		Item item = itemStack.getItem();
+    		if(item instanceof net.minecraft.item.ItemSpade || item.getHarvestLevel(itemStack, "shovel") >= 0){
+    			shovelHits++;
+    			super.damageEntity(src,amount);
+    			if(shovelHits >= shovelHitLimit){
+    				// bury the body
+    				this.kill();
+    			}
+    		}
+    	}
+    	if(this.posY < -1){
+    		// fell out of the world
+    		this.kill();
+    	}
+    	
+    	// spit the body out of a wall is hurt by block suffocation
+    	 if(src.equals(DamageSource.inWall)){
+    		 jumpOutOfWall();
+    	 }
+    	
+    	// special cases handled before this point
+    	// general cases:
+    	if(invulnerable) return;
+    	if(this.hurtByAll) super.damageEntity(src, amount);
+    	if(src.getEntity() != null && src.getEntity() instanceof EntityLivingBase && this.hurtByWeapons) super.damageEntity(src, amount);
+    	if(src.isFireDamage() && this.hurtByFire) super.damageEntity(src, amount);
+    	if(src.isExplosion() && this.hurtByBlast) super.damageEntity(src, amount);
+    	if(src == DamageSource.fall && this.hurtByFall) super.damageEntity(src, amount);
+    	if(src == DamageSource.cactus && this.hurtByCactus) super.damageEntity(src, amount);
+    	if(src == DamageSource.inWall && this.hurtByBlockSuffocation) super.damageEntity(src, amount);
+    	if(this.hurtByOther) super.damageEntity(src, amount);
+    	
+    	// He's dead, Jim
+    	 if(super.getHealth() <= 0){
+    	 deadMode = true;
+    	 }
     }
     
     
     public void jumpOutOfWall(){
-         double root2 = 1.414213562;
-         double[] currentCoord = {(int)this.posX, (int)this.posY, (int)this.posZ};
-         // first try going out to the nearest adjacent block
-         double[] vector = new double[3];
-         vector[0] = this.posX - (currentCoord[0]+0.5) ;
-         vector[1] = 0;
-         vector[2] = this.posZ - (currentCoord[2]+0.5);
-         double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
-         vector[0] *= normalizer;
-         vector[1] *= normalizer;
-         vector[2] *= normalizer;
-         Block block = worldObj.getBlock((int)(this.posX+vector[0]), (int)(this.posY+vector[1]), (int)(this.posZ+vector[2]));
-         if(!(block.getMaterial().blocksMovement())){
-         this.setPosition((int)(this.posX+vector[0])+0.5, (int)(this.posY+vector[1]), (int)(this.posZ+vector[2])+0.5);
-         return;
-         }
-        
-         // then try finding an open space in all adjacent blocks
-         int[] n = new int[3];
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[1]+=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[0]+=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[0]-=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[2]+=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[2]-=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         n[0]=(int)currentCoord[0];
-         n[1]=(int)currentCoord[1];
-         n[2]=(int)currentCoord[2];
-         n[1]-=1;
-         if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
-         this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
-         return;
-         }
-         // then if the above fails, move 1.5 blocks in a random direction
-         vector[0] = worldObj.rand.nextDouble();
-         vector[1] = worldObj.rand.nextDouble();
-         vector[2] = worldObj.rand.nextDouble();
-         normalizer = root2/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
-         this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
-         }
+    	 double root2 = 1.414213562;
+    	 double[] currentCoord = {(int)this.posX, (int)this.posY, (int)this.posZ};
+    	 // first try going out to the nearest adjacent block
+    	 double[] vector = new double[3];
+    	 vector[0] = this.posX - (currentCoord[0]+0.5) ;
+    	 vector[1] = 0;
+    	 vector[2] = this.posZ - (currentCoord[2]+0.5);
+    	 double normalizer = 1.0/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	 vector[0] *= normalizer;
+    	 vector[1] *= normalizer;
+    	 vector[2] *= normalizer;
+    	 Block block = worldObj.getBlock((int)(this.posX+vector[0]), (int)(this.posY+vector[1]), (int)(this.posZ+vector[2]));
+    	 if(!(block.getMaterial().blocksMovement())){
+    	 this.setPosition((int)(this.posX+vector[0])+0.5, (int)(this.posY+vector[1]), (int)(this.posZ+vector[2])+0.5);
+    	 return;
+    	 }
+    	
+    	 // then try finding an open space in all adjacent blocks
+    	 int[] n = new int[3];
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[1]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[0]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[0]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[2]+=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[2]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 n[0]=(int)currentCoord[0];
+    	 n[1]=(int)currentCoord[1];
+    	 n[2]=(int)currentCoord[2];
+    	 n[1]-=1;
+    	 if(!(worldObj.getBlock(n[0],n[1],n[2]).getMaterial().blocksMovement())){
+    	 this.setPosition(n[0]+0.5,n[1]+0.015625, n[2]+0.5);
+    	 return;
+    	 }
+    	 // then if the above fails, move 1.5 blocks in a random direction
+    	 vector[0] = worldObj.rand.nextDouble();
+    	 vector[1] = worldObj.rand.nextDouble();
+    	 vector[2] = worldObj.rand.nextDouble();
+    	 normalizer = root2/Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
+    	 this.setPosition(this.posX+vector[0], this.posY+vector[1], this.posZ+vector[2]);
+    	 }
     
     @Override
     protected void kill() {
-        deadMode = true;
-        this.attackEntityFrom(selfDestruct, this.getMaxHealth());
-         this.markDirty();
+    	deadMode = true;
+    	this.attackEntityFrom(selfDestruct, this.getMaxHealth());
+    	 this.markDirty();
     }
     
     
     @Override public void updateAITasks(){
-        // do nothing
+    	// do nothing
     }
     @Override
     public ItemStack getHeldItem() {
@@ -546,7 +546,7 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
     
     public ItemStack armorItemInSlot(int i){
-        return getCurrentArmor(i);
+    	return getCurrentArmor(i);
     }
     
     @Override
@@ -561,33 +561,33 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     
     @Override
     protected void dropEquipment(final boolean doDrop, final int dropProbability) {
-        if(!doDrop) return;
-        for (int j = this.equipment.length - 1; j >= 0 ; j--) {
-            final ItemStack itemstack = equipment[j];
-            if (itemstack != null ) {
-                this.entityDropItem(itemstack, 0.0f);
-                equipment[j] = null;
-            }
-        }
-        if(!auxInventory.isEmpty()){
-            Iterator<ItemStack> buffer = this.auxInventory.iterator();
-            while(buffer.hasNext()){
-                ItemStack itemstack = buffer.next();
-                if(itemstack == null) continue;
-                this.entityDropItem(itemstack, 0.0f);
-            }
-            auxInventory.clear();
-        }
+    	if(!doDrop) return;
+    	for (int j = this.equipment.length - 1; j >= 0 ; j--) {
+    		final ItemStack itemstack = equipment[j];
+    		if (itemstack != null ) {
+    			this.entityDropItem(itemstack, 0.0f);
+    			equipment[j] = null;
+    		}
+    	}
+    	if(!auxInventory.isEmpty()){
+    		Iterator<ItemStack> buffer = this.auxInventory.iterator();
+    		while(buffer.hasNext()){
+    			ItemStack itemstack = buffer.next();
+    			if(itemstack == null) continue;
+    			this.entityDropItem(itemstack, 0.0f);
+    		}
+    		auxInventory.clear();
+    	}
     }
 
 
     boolean notFull(){
-        for(int i = 5; i < equipment.length; i++){
-            if(equipment[i] == null){
-                return true;
-            }
-        }
-        return auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize;
+    	for(int i = 5; i < equipment.length; i++){
+    		if(equipment[i] == null){
+    			return true;
+    		}
+    	}
+    	return auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize;
     }
     /**
      *
@@ -597,44 +597,44 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
      * remainder was returned)
      */
     public ItemStack vacuumItem(ItemStack item){
-        if(item == null) return null;
-        int nextIndex = 5; // after the armor and held item slots
-        while(nextIndex < equipment.length){
-            if(equipment[nextIndex] != null){
-                if(canStack(item,equipment[nextIndex])){
-                    ItemStack remainder = stackItemStacks(equipment[nextIndex],item);
-                    if(remainder != null){
-                        item = remainder;
-                    } else {
-                        return null;
-                    }
-                }
-            } else {
-                equipment[nextIndex] = applyItemDamage(item);
-                return null;
-            }
-            nextIndex++;
-        }
-        // inventory is full
-        if(auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize){
-            // put item in the overflow
-            Iterator<ItemStack> buffer = this.auxInventory.iterator();
-            while(buffer.hasNext()){
-                ItemStack bufferItem = buffer.next();
-                if(canStack(bufferItem,item)){
-                    item = stackItemStacks(bufferItem,item);
-                    if(item == null){
-                        return null;
-                    }
-                }
-            }
-            //System.out.println("Adding "+item.toString()+" to the buffer.");
-            this.auxInventory.addLast(applyItemDamage(item));
-            return null;
-        } else {
-            // and the overflow buffer is full too
-            return item.copy();
-        }
+    	if(item == null) return null;
+    	int nextIndex = 5; // after the armor and held item slots
+    	while(nextIndex < equipment.length){
+    		if(equipment[nextIndex] != null){
+    			if(canStack(item,equipment[nextIndex])){
+    				ItemStack remainder = stackItemStacks(equipment[nextIndex],item);
+    				if(remainder != null){
+    					item = remainder;
+    				} else {
+    					return null;
+    				}
+    			}
+    		} else {
+    			equipment[nextIndex] = applyItemDamage(item);
+    			return null;
+    		}
+    		nextIndex++;
+    	}
+    	// inventory is full
+    	if(auxInventory.size() < LootableBodies.corpseAuxilleryInventorySize){
+    		// put item in the overflow
+    		Iterator<ItemStack> buffer = this.auxInventory.iterator();
+    		while(buffer.hasNext()){
+    			ItemStack bufferItem = buffer.next();
+    			if(canStack(bufferItem,item)){
+    				item = stackItemStacks(bufferItem,item);
+    				if(item == null){
+    					return null;
+    				}
+    			}
+    		}
+    		//System.out.println("Adding "+item.toString()+" to the buffer.");
+    		this.auxInventory.addLast(applyItemDamage(item));
+    		return null;
+    	} else {
+    		// and the overflow buffer is full too
+    		return item.copy();
+    	}
     }
     /**
      * Stacks two ItemStacks, returning the remainder.
@@ -644,46 +644,46 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
      * stacks can merge into a single stack)
      */
     ItemStack stackItemStacks(ItemStack dest, ItemStack src){
-        if(src.stackSize == 0) return null;
-        //System.out.println("Stacking "+src.toString()+" into "+dest.toString());
-        if(canStack(dest,src)){
-            int maxStackSize = Math.min(dest.getMaxStackSize(),this.getInventoryStackLimit());
-            if(src.stackSize + dest.stackSize < maxStackSize){
-                dest.stackSize += src.stackSize;
-                return null;
-            } else if(dest.stackSize < maxStackSize){
-                int difference = maxStackSize - dest.stackSize;
-                dest.stackSize += difference;
-                src.stackSize -= difference;
-                if(src.stackSize == 0) return null;
-                return src;
-            } else {
-                return src;
-            }
-        } else {
-            // cannot stack
-            return src;
-        }
+    	if(src.stackSize == 0) return null;
+    	//System.out.println("Stacking "+src.toString()+" into "+dest.toString());
+    	if(canStack(dest,src)){
+    		int maxStackSize = Math.min(dest.getMaxStackSize(),this.getInventoryStackLimit());
+    		if(src.stackSize + dest.stackSize < maxStackSize){
+    			dest.stackSize += src.stackSize;
+    			return null;
+    		} else if(dest.stackSize < maxStackSize){
+    			int difference = maxStackSize - dest.stackSize;
+    			dest.stackSize += difference;
+    			src.stackSize -= difference;
+    			if(src.stackSize == 0) return null;
+    			return src;
+    		} else {
+    			return src;
+    		}
+    	} else {
+    		// cannot stack
+    		return src;
+    	}
     }
     
     private boolean canStack(ItemStack a, ItemStack b){
-        if(a == null || b == null) return false;
-        if(a.getItem() == b.getItem() && a.isStackable()){
-            if(a.getItemDamage() != b.getItemDamage()) return false;
-            if(a.isStackable() == false )return false;
-            if(a.stackSize + b.stackSize > Math.min(a.getMaxStackSize(),this.getInventoryStackLimit())) return false;
-            if(a.hasTagCompound() == false && b.hasTagCompound() == false){
-                return true;
-            } else if(a.hasTagCompound() && b.hasTagCompound()){
-                return ItemStack.areItemStackTagsEqual(a, b);
-            }
-        }
-        return false;
+    	if(a == null || b == null) return false;
+    	if(a.getItem() == b.getItem() && a.isStackable()){
+    		if(a.getItemDamage() != b.getItemDamage()) return false;
+    		if(a.isStackable() == false )return false;
+    		if(a.stackSize + b.stackSize > Math.min(a.getMaxStackSize(),this.getInventoryStackLimit())) return false;
+    		if(a.hasTagCompound() == false && b.hasTagCompound() == false){
+    			return true;
+    		} else if(a.hasTagCompound() && b.hasTagCompound()){
+    			return ItemStack.areItemStackTagsEqual(a, b);
+    		}
+    	}
+    	return false;
     }
     
     public static ItemStack applyItemDamage(ItemStack itemstack){
-        if(additionalItemDamage == 0) return itemstack;
-        if (itemstack != null 
+    	if(additionalItemDamage == 0) return itemstack;
+    	if (itemstack != null 
                 && itemstack.isItemStackDamageable()
                 && itemstack.getItem().isDamageable()
                 && (!itemstack.isStackable())
@@ -692,42 +692,42 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
             final int newDamageValue = itemstack.getItemDamage() + additionalItemDamage;
             itemstack.setItemDamage(Math.min(newDamageValue, itemstack.getMaxDamage() - 1));
         }
-        return itemstack;
+    	return itemstack;
     }
-    
+	
     public void setDeathTime(long timestamp){
-        this.deathTimestamp = timestamp;
+    	this.deathTimestamp = timestamp;
     }
     
     @Override
     public int getTalkInterval() {
         return 1200;
     }
-    @Override
+	@Override
     public void playLivingSound() {
         // do nothing
     }
-    
-    @Override public boolean canBreatheUnderwater() {
-        return true;
-    }
-    
-    @Override
+	
+	@Override public boolean canBreatheUnderwater() {
+		return true;
+	}
+	
+	@Override
     protected int getExperiencePoints(final EntityPlayer p_getExperiencePoints_1_) {
         return 0;
     }
-    @SideOnly(Side.CLIENT)
+	@SideOnly(Side.CLIENT)
     @Override
     public void handleHealthUpdate(final byte p_handleHealthUpdate_1_) {
        // do nothing
     }
-    
-    @Override
+	
+	@Override
     protected String getLivingSound() {
         return null;
     }
     
-    @Override
+	@Override
     protected Item getDropItem() {
         return null;
     }
@@ -753,11 +753,15 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         // do nothing
     }
     
+    
+    
     @Override
     protected boolean interact(final EntityPlayer player) {
-        player.displayGUIChest(this);
+    	player.displayGUIChest(this);
         return true;
     }
+    
+    
     
     @Override
     public boolean allowLeashing() {
@@ -765,34 +769,34 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
     
     protected void playSound(String soundID){
-        if (!worldObj.isRemote)
-        {
-            worldObj.playSoundAtEntity(this, soundID, 0.5F, 0.4F );
-        }
+    	if (!worldObj.isRemote)
+    	{
+    		worldObj.playSoundAtEntity(this, soundID, 0.5F, 0.4F );
+    	}
     }
 
 ///// INVENTORY METHODS /////
-    //@Override // gradle thinks this method is called clearInventory(), eclipse thinks it is called clear()
-    public void clear() {
-        for (int i = 0; i < this.equipment.length; ++i) {
+	//@Override // gradle thinks this method is called clearInventory(), eclipse thinks it is called clear()
+	public void clear() {
+		for (int i = 0; i < this.equipment.length; ++i) {
             this.equipment[i] = null;
         }
-        this.auxInventory.clear();
-    }
-    public void clearInventory(){
-        clear();
-    }
+		this.auxInventory.clear();
+	}
+	public void clearInventory(){
+		clear();
+	}
 
 
-    @Override
-    public void closeInventory() {
-        playSound("mob.horse.leather");
-    }
+	@Override
+	public void closeInventory() {
+		playSound("mob.horse.leather");
+	}
 
 
-    @Override
-    public ItemStack decrStackSize(int index, int count) {
-        if (this.equipment[index] == null) {
+	@Override
+	public ItemStack decrStackSize(int index, int count) {
+		if (this.equipment[index] == null) {
             return null;
         }
         if (this.equipment[index].stackSize <= count) {
@@ -807,76 +811,76 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
         }
         this.markDirty();
         return splitStack;
-    }
+	}
 
 
 
-    @Override
-    public int getInventoryStackLimit() {
-        return 64;
-    }
+	@Override
+	public int getInventoryStackLimit() {
+		return 64;
+	}
 
 
-    @Override
-    public int getSizeInventory() {
-        return this.equipment.length;
-    }
+	@Override
+	public int getSizeInventory() {
+		return this.equipment.length;
+	}
 
 
-    @Override
-    public ItemStack getStackInSlot(int index) {
-        return equipment[index];
-    }
+	@Override
+	public ItemStack getStackInSlot(int index) {
+		return equipment[index];
+	}
 
 
-    @Override
-    public ItemStack getStackInSlotOnClosing(int index) {
-        if (this.equipment[index] != null) {
+	@Override
+	public ItemStack getStackInSlotOnClosing(int index) {
+		if (this.equipment[index] != null) {
             final ItemStack itemStack = this.equipment[index];
             this.equipment[index] = null;
             return itemStack;
         }
         return null;
-    }
+	}
 
 
-    @Override
-    public boolean isItemValidForSlot(int index, ItemStack stack) {
-        if(index < 5 && index > 0){
-            // armor display slots
-            if(getArmorPosition(stack) != index){
-                return false;
-            }
-        }
-        return true;
-    }
+	@Override
+	public boolean isItemValidForSlot(int index, ItemStack stack) {
+		if(index < 5 && index > 0){
+			// armor display slots
+			if(getArmorPosition(stack) != index){
+				return false;
+			}
+		}
+		return true;
+	}
 
 
-    @Override
-    public boolean isUseableByPlayer(EntityPlayer player) {
-        if(deadMode) return false;
-        // check distance
-        return player.getDistanceSq(this.posX, this.posY, this.posZ) <= 16.0;
-    }
+	@Override
+	public boolean isUseableByPlayer(EntityPlayer player) {
+		if(deadMode) return false;
+		// check distance
+		return player.getDistanceSq(this.posX, this.posY, this.posZ) <= 16.0;
+	}
 
 
-    @Override
-    public void markDirty() {
-        // sync inventory across clients
-        // actually, we instead dis-allow concurrent access
-    }
+	@Override
+	public void markDirty() {
+		// sync inventory across clients
+		// actually, we instead dis-allow concurrent access
+	}
 
 
-    @Override
-    public void openInventory() {
-        playSound("mob.horse.armor");
-    }
+	@Override
+	public void openInventory() {
+		playSound("mob.horse.armor");
+	}
 
 
 
 
-    @Override
-    public void setInventorySlotContents(final int slot, final ItemStack item) {
+	@Override
+	public void setInventorySlotContents(final int slot, final ItemStack item) {
         this.equipment[slot] = item;
         if (item != null && item.stackSize > this.getInventoryStackLimit()) {
             item.stackSize = this.getInventoryStackLimit();
@@ -885,12 +889,12 @@ public class EntityLootableBody extends net.minecraft.entity.EntityLiving implem
     }
 
 
-    @Override public String getInventoryName(){
-        return this.getClass().getSimpleName();
-    }
-    @Override public boolean hasCustomInventoryName(){
-        return false;
-    }
+	@Override public String getInventoryName(){
+		return this.getClass().getSimpleName();
+	}
+	@Override public boolean hasCustomInventoryName(){
+		return false;
+	}
 ///// END OF INVENTORY METHODS /////
    
     
