@@ -6,6 +6,8 @@ import net.minecraft.item.Item;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -19,7 +21,7 @@ import cyano.lootable.events.PlayerDeathEventHandler;
 public class LootableBodies {
     public static final String MODID = "lootablebodies";
     public static final String NAME ="DrCyano's Lootable Bodies";
-    public static final String VERSION = "1.3.7";
+    public static final String VERSION = "1.3.8";
 
     public static boolean addBonesToCorpse = true;
     public static boolean fancyCorpses = false;
@@ -128,7 +130,10 @@ public class LootableBodies {
 		registerItemRenders();
 		
 		registerEntity(EntityLootableBody.class);
+		
+		// register handlers
 		MinecraftForge.EVENT_BUS.register(new PlayerDeathEventHandler());
+		FMLCommonHandler.instance().bus().register(new PlayerDeathEventHandler());
  		
 		proxy.init(event);
 		
