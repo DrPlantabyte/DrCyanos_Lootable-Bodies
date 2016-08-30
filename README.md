@@ -1,5 +1,6 @@
 # DrCyano's Lootable Bodies
 A death-chest mod for Minecraft
+
 **This project has moved to https://github.com/MinecraftModDevelopment/LootableBodies**
 
 ## Requirements
